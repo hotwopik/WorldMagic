@@ -1,0 +1,7 @@
+name: WorldMagic
+description: "Progressive world manager"
+version: '$version'
+authors: [hotwop]
+
+main: io.hotwop.worldmagic.WorldMagic
+api-version: '1.20.6'
