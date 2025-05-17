@@ -3,13 +3,10 @@ package io.hotwop.worldmagic.file;
 import io.hotwop.worldmagic.generation.Dimension;
 import io.hotwop.worldmagic.generation.GeneratorSettings;
 import io.hotwop.worldmagic.util.Reference;
-import io.hotwop.worldmagic.util.serializer.ConfigRange;
-import io.hotwop.worldmagic.util.serializer.NamespacedKeySerializer;
-import io.hotwop.worldmagic.util.serializer.NotEmpty;
-import io.hotwop.worldmagic.util.serializer.RequiredReference;
-import io.leangen.geantyref.TypeToken;
+import io.hotwop.worldmagic.util.serializer.*;
 import org.bukkit.Difficulty;
 import org.bukkit.GameMode;
+import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 import org.spongepowered.configurate.objectmapping.ObjectMapper;
@@ -32,6 +29,7 @@ public final class WorldFile{
     public static final TypeSerializerCollection serializers=TypeSerializerCollection.builder()
         .register(NamespacedKeySerializer.instance)
         .register(Dimension.class,Dimension.Serializer.instance)
+        .register(Location.class,LocationSerializer.instance)
         .registerAll(GeneratorSettings.serializer)
         .registerAnnotatedObjects(objectFactory)
         .build();
@@ -112,6 +110,9 @@ public final class WorldFile{
 
     @Comment("World spawn position, by default set by minecraft")
     public SpawnPosition spawnPosition=null;
+
+    @Comment("Position to which players sends on world unload, default to overworld spawn(Vanilla world ids should be used)")
+    public Location callbackLocation=null;
 
     @ConfigSerializable
     public static final class SpawnPosition{

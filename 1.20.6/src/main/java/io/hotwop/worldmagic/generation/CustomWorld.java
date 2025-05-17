@@ -1,13 +1,14 @@
 package io.hotwop.worldmagic.generation;
 
-import com.google.common.collect.ImmutableList;
 import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.Lifecycle;
 import io.hotwop.worldmagic.WorldMagic;
 import io.hotwop.worldmagic.file.WorldFile;
+import io.hotwop.worldmagic.util.ImmutableLocation;
 import io.hotwop.worldmagic.util.Util;
 import it.unimi.dsi.fastutil.longs.LongIterator;
 import net.minecraft.core.*;
+import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.features.MiscOverworldFeatures;
 import net.minecraft.nbt.NbtException;
@@ -33,18 +34,13 @@ import net.minecraft.world.level.levelgen.*;
 import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
 import net.minecraft.world.level.storage.*;
 import net.minecraft.world.level.validation.ContentValidationException;
-import org.bukkit.Bukkit;
-import org.bukkit.NamespacedKey;
-import org.bukkit.World;
-import org.bukkit.WorldCreator;
-import org.bukkit.craftbukkit.CraftServer;
+import org.bukkit.*;
 import org.bukkit.event.world.WorldInitEvent;
 import org.bukkit.event.world.WorldLoadEvent;
 import org.bukkit.plugin.PluginManager;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
@@ -60,6 +56,7 @@ import static io.hotwop.worldmagic.WorldMagic.*;
 public final class CustomWorld {
     private static final ExecutorService threadManager=Executors.newCachedThreadPool();
     private static final Method vanillaSetSpawn;
+    private static final NamespacedKey overworld=NamespacedKey.minecraft("overworld");
 
     static{
         try {
@@ -92,6 +89,7 @@ public final class CustomWorld {
     public final Dimension dimension;
     public final Loading loading;
     public final SpawnPosition spawnPosition;
+    public final Location callbackLocation;
     public final AllowSettings allowSettings;
 
     public record WorldProperties(
@@ -178,6 +176,7 @@ public final class CustomWorld {
         dimension=file.dimension;
         loading=new Loading(file.loading);
         spawnPosition=file.spawnPosition==null?null:new SpawnPosition(file.spawnPosition);
+        callbackLocation=file.callbackLocation==null?null:new ImmutableLocation(file.callbackLocation);
         allowSettings=new AllowSettings(file.allowSettings);
     }
 
@@ -213,17 +212,22 @@ public final class CustomWorld {
 
         List<ServerPlayer> players=level.players();
 
-        if(players.isEmpty())unloadPreprocess();
-        else{
+        if(players.isEmpty()){
+            if(vanillaServer().isSameThread())unloadProcess();
+            else scheduler().runTask(instance(),this::unloadProcess);
+        }else{
             AtomicInteger task=new AtomicInteger(players.size());
 
-            players.forEach(pl->pl.getBukkitEntity().teleportAsync());
-        }
-    }
+            Location loc;
+            if(callbackLocation==null)loc=Bukkit.getWorld(overworld).getSpawnLocation();
+            else loc=callbackLocation;
 
-    private void unloadPreprocess(){
-        if(vanillaServer().isSameThread())unloadProcess();
-        else scheduler().runTask(instance(),this::unloadProcess);
+            players.forEach(pl->pl.getBukkitEntity().teleportAsync(loc).thenAccept(done->{
+                if(!done)pl.getBukkitEntity().teleport(loc);
+
+                if(task.addAndGet(-1)==0)unloadProcess();
+            }));
+        }
     }
 
     @SuppressWarnings("deprecation")
@@ -354,7 +358,7 @@ public final class CustomWorld {
             loadListener,
             specialProperty==PrimaryLevelData.SpecialWorldProperty.DEBUG,
             worldProperties.seed,
-            ImmutableList.of(new PhantomSpawner(),new PatrolSpawner(),new CatSpawner(),new VillageSiege(),new WanderingTraderSpawner(levelData)),
+            List.of(new PhantomSpawner(),new PatrolSpawner(),new CatSpawner(),new VillageSiege(),new WanderingTraderSpawner(levelData)),
             true,
             vanillaServer().overworld().getRandomSequences(),
             Util.mapEnvironment(stem.type()),
@@ -377,14 +381,14 @@ public final class CustomWorld {
 
         if(!levelData.isInitialized()){
             if(spawnPosition!=null){
-                if(spawnPosition.override){
-                    if (worldProperties.bonusChest){
-                        level.registryAccess().registry(Registries.CONFIGURED_FEATURE).flatMap((registry)->registry.getHolder(MiscOverworldFeatures.BONUS_CHEST))
-                            .ifPresent((holder)->((ConfiguredFeature<?, ?>)holder.value())
-                                .place(level, level.chunkSource.getGenerator(), level.random, levelData.getSpawnPos())
-                            );
-                    }
-                }else setSpawn(level,levelData);
+                if(!spawnPosition.override)setSpawn(level,levelData);
+
+                if (worldProperties.bonusChest){
+                    level.registryAccess().registry(Registries.CONFIGURED_FEATURE).flatMap((registry)->registry.getHolder(MiscOverworldFeatures.BONUS_CHEST))
+                        .ifPresent((holder)->((ConfiguredFeature<?, ?>)holder.value())
+                            .place(level, level.chunkSource.getGenerator(), level.random, levelData.getSpawnPos())
+                        );
+                }
             }else{
                 try{
                     vanillaSetSpawn.invoke(null,level,levelData,worldProperties.bonusChest,level.isDebug());
@@ -425,7 +429,7 @@ public final class CustomWorld {
     }
 
     private void unloadProcess(){
-        Bukkit.unloadWorld(bukkitWorld,loading.save);
+
     }
 
     private void setSpawn(ServerLevel level,PrimaryLevelData levelData){
