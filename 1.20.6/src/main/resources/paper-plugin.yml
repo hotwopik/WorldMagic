@@ -5,6 +5,5 @@ authors: [hotwop]
 
 main: io.hotwop.worldmagic.WorldMagic
 bootstrapper: io.hotwop.worldmagic.WorldMagicBootstrap
-loader: io.hotwop.worldmagic.WorldMagicLoader
 
 api-version: '1.20.6'

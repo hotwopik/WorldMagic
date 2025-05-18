@@ -1,6 +1,7 @@
 package io.hotwop.worldmagic.file;
 
 import io.hotwop.worldmagic.generation.Dimension;
+import io.hotwop.worldmagic.generation.GameRuleFactory;
 import io.hotwop.worldmagic.generation.GeneratorSettings;
 import io.hotwop.worldmagic.util.Reference;
 import io.hotwop.worldmagic.util.serializer.*;
@@ -30,6 +31,7 @@ public final class WorldFile{
         .register(NamespacedKeySerializer.instance)
         .register(Dimension.class,Dimension.Serializer.instance)
         .register(Location.class,LocationSerializer.instance)
+        .register(GameRuleFactory.class,GameRuleFactory.Serializer.instance)
         .registerAll(GeneratorSettings.serializer)
         .registerAnnotatedObjects(objectFactory)
         .build();
@@ -91,10 +93,6 @@ public final class WorldFile{
         @Comment("Should world loads at server startup, boolean, default to true")
         public boolean startup=true;
 
-        @Comment("Radius in chunks that will load at world loading, 0 means that no chunks will load, int, default to 1")
-        @ConfigRange(min=0)
-        public int radius=1;
-
         @Comment("Should plugin override previously saved world settings, boolean, default to true")
         public boolean override=true;
 
@@ -140,4 +138,7 @@ public final class WorldFile{
         public boolean animals=true;
         public boolean monsters=true;
     }
+
+    @Comment("Configure gamerules in the world, set override to true to make it reset on every load")
+    public GameRuleFactory gamerules;
 }

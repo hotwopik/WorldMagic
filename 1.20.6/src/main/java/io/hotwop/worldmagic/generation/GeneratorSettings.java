@@ -3,6 +3,7 @@ package io.hotwop.worldmagic.generation;
 import com.google.gson.JsonObject;
 import com.mojang.serialization.JsonOps;
 import io.hotwop.worldmagic.WorldMagic;
+import io.hotwop.worldmagic.util.dfu.ConfigurateOps;
 import io.hotwop.worldmagic.util.serializer.EnumSwitchSerializer;
 import net.minecraft.server.dedicated.DedicatedServerProperties;
 import net.minecraft.util.GsonHelper;
@@ -10,7 +11,6 @@ import net.minecraft.world.level.chunk.ChunkGenerator;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.jetbrains.annotations.NotNull;
 import org.spongepowered.configurate.ConfigurationNode;
-import org.spongepowered.configurate.extra.dfu.v4.ConfigurateOps;
 import org.spongepowered.configurate.serialize.ScalarSerializer;
 import org.spongepowered.configurate.serialize.SerializationException;
 import org.spongepowered.configurate.serialize.TypeSerializer;
@@ -49,7 +49,7 @@ public sealed interface GeneratorSettings permits GeneratorSettings.Vanilla,Gene
             private Serializer() {}
 
             public Vanilla deserialize(@NotNull Type type, @NotNull ConfigurationNode node) throws SerializationException {
-                ChunkGenerator gen = ChunkGenerator.CODEC.parse(WorldMagic.vanillaServer().registryAccess().createSerializationContext(ConfigurateOps.instance(true)), node)
+                ChunkGenerator gen = ChunkGenerator.CODEC.parse(WorldMagic.vanillaServer().registryAccess().createSerializationContext(ConfigurateOps.instance()), node)
                     .getOrThrow(err -> new SerializationException(node, GeneratorSettings.class, "Error to deserialize vanilla generator settings: " + err));
                 return new Vanilla(gen);
             }
@@ -57,7 +57,7 @@ public sealed interface GeneratorSettings permits GeneratorSettings.Vanilla,Gene
             public void serialize(@NotNull Type type, @Nullable Vanilla obj, @NotNull ConfigurationNode node) throws SerializationException {
                 if (obj == null) return;
 
-                ChunkGenerator.CODEC.encode(obj.generator,WorldMagic.vanillaServer().registryAccess().createSerializationContext(ConfigurateOps.instance(true)),node)
+                ChunkGenerator.CODEC.encode(obj.generator,WorldMagic.vanillaServer().registryAccess().createSerializationContext(ConfigurateOps.instance()),node)
                     .getOrThrow(err -> new SerializationException(node, GeneratorSettings.class, "Error to serialize vanilla generator settings: " + err));
             }
         }

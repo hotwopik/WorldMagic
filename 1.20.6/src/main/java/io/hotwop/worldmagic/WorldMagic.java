@@ -33,7 +33,6 @@ public final class WorldMagic extends JavaPlugin {
 
     private static WorldMagic instance;
 
-    private static Path dataFolderPath;
     private static Path worldsPath;
 
     private static WorldLoader.DataLoadContext worldLoader;
@@ -83,9 +82,9 @@ public final class WorldMagic extends JavaPlugin {
 
         File dataFolder=getDataFolder();
         dataFolder.mkdirs();
-        dataFolderPath=dataFolder.toPath();
+        Path dataFolderPath=dataFolder.toPath();
 
-        worldsPath=dataFolderPath.resolve("worlds");
+        worldsPath= dataFolderPath.resolve("worlds");
         worldsPath.toFile().mkdir();
         loadWorldFiles();
         worldFiles.forEach((id,file)->worlds.add(new CustomWorld(file)));
