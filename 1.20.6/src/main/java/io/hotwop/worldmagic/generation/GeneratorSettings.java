@@ -21,13 +21,14 @@ import java.util.function.Predicate;
 
 public sealed interface GeneratorSettings permits GeneratorSettings.Vanilla,GeneratorSettings.Plugin{
     TypeSerializerCollection serializer=TypeSerializerCollection.builder()
-        .register(GeneratorSettings.class,EnumSwitchSerializer.builder(GeneratorSettings.class, GenType.class,"type","settings")
+        .register(Plugin.Serializer.instance)
+        .register(Vanilla.class,Vanilla.Serializer.instance)
+
+        .registerExact(GeneratorSettings.class,EnumSwitchSerializer.builder(GeneratorSettings.class, GenType.class,"source","settings")
             .define(GenType.vanilla, Vanilla.class)
             .define(GenType.plugin, Plugin.class)
             .build()
         )
-        .register(Plugin.Serializer.instance)
-        .register(Vanilla.class, Vanilla.Serializer.instance)
         .build();
 
     enum GenType {
@@ -45,7 +46,6 @@ public sealed interface GeneratorSettings permits GeneratorSettings.Vanilla,Gene
 
         public static final class Serializer implements TypeSerializer<Vanilla> {
             public static final Serializer instance = new Serializer();
-
             private Serializer() {}
 
             public Vanilla deserialize(@NotNull Type type, @NotNull ConfigurationNode node) throws SerializationException {

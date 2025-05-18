@@ -1,13 +1,23 @@
 package io.hotwop.worldmagic;
 
+import com.mojang.serialization.Lifecycle;
 import io.hotwop.worldmagic.file.WorldFile;
 import io.hotwop.worldmagic.generation.CustomWorld;
+import io.hotwop.worldmagic.generation.Dimension;
+import io.hotwop.worldmagic.util.Util;
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.WorldLoader;
 import net.minecraft.server.dedicated.DedicatedServer;
+import net.minecraft.world.level.dimension.LevelStem;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Server;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.Listener;
+import org.bukkit.event.world.WorldSaveEvent;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitScheduler;
@@ -88,16 +98,18 @@ public final class WorldMagic extends JavaPlugin {
         worldsPath.toFile().mkdir();
         loadWorldFiles();
         worldFiles.forEach((id,file)->worlds.add(new CustomWorld(file)));
-
-        worlds.forEach(CustomWorld::register);
-        loaded=true;
     }
 
     @Override
     public void onEnable(){
         worlds.forEach(wr->{
+            wr.register();
             if(wr.loading.startup())wr.load();
         });
+
+        loaded=true;
+
+        pluginManager.registerEvents(new EventListener(),this);
     }
 
     public void loadWorldFiles(){
@@ -166,9 +178,45 @@ public final class WorldMagic extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        List<ResourceKey<LevelStem>> dimensions=new ArrayList<>();
+
         worlds.forEach(wr->{
             if(wr.loaded())wr.unload();
+            if(wr.dimension instanceof Dimension.Inline)dimensions.add(wr.vanillaId);
         });
+
         CustomWorld.shutdownAsync();
+        Util.unregisterAll(Registries.LEVEL_STEM,vanillaServer.registryAccess(),dimensions);
+    }
+
+
+    public static final class EventListener implements Listener {
+        private EventListener(){}
+
+        private boolean saving=false;
+
+        @EventHandler(priority=EventPriority.HIGHEST)
+        public void worldSave(WorldSaveEvent e){
+            if(!saving){
+                saving=true;
+
+                List<ResourceKey<LevelStem>> dimensions=new ArrayList<>();
+                Map<ResourceKey<LevelStem>,LevelStem> map=new HashMap<>();
+
+                worlds.forEach(wr->{
+                    if(wr.registered()&&wr.dimension instanceof Dimension.Inline inl){
+                        dimensions.add(wr.vanillaId);
+                        map.put(wr.vanillaId,inl.get());
+                    }
+                });
+
+                Util.unregisterAll(Registries.LEVEL_STEM,vanillaServer.registryAccess(),dimensions);
+                scheduler.runTask(instance,()->{
+                    Util.registerIgnoreFreezeAll(Registries.LEVEL_STEM,vanillaServer.registryAccess(),map,Lifecycle.experimental());
+                    Util.boundRegistrations(Registries.LEVEL_STEM,vanillaServer.registryAccess(),map);
+                    saving=false;
+                });
+            }
+        }
     }
 }

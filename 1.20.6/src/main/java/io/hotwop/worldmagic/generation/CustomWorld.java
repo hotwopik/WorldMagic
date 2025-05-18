@@ -36,8 +36,12 @@ import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
 import net.minecraft.world.level.storage.*;
 import net.minecraft.world.level.validation.ContentValidationException;
 import org.bukkit.*;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.Listener;
 import org.bukkit.event.world.WorldInitEvent;
 import org.bukkit.event.world.WorldLoadEvent;
+import org.bukkit.event.world.WorldUnloadEvent;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -191,18 +195,42 @@ public final class CustomWorld {
         gamerules=file.gamerules;
     }
 
+    public final class EventListener implements Listener{
+        @EventHandler(priority=EventPriority.HIGHEST)
+        public void worldUnload(WorldUnloadEvent e){
+            if(loaded){
+                World world=e.getWorld();
+                if(world.equals(bukkitWorld)){
+                    logger().info("Redirecting world unload to WorldMagic...");
+                    e.setCancelled(true);
+                    unload();
+                }
+            }
+        }
+    }
+
     public void register(){
         if(shutdown)return;
         if(registered)throw new RuntimeException("World already registered");
-        if(WorldMagic.loaded())throw new RuntimeException("World can't be registered in play game state");
 
         if(dimension instanceof Dimension.Reference ref){
             dimensionId=ref.getKey();
         }else if(dimension instanceof Dimension.Inline inl){
-            LevelStem stem=inl.get();
-            Util.registerIgnoreFreeze(Registries.LEVEL_STEM,WorldMagic.vanillaServer().registryAccess(),vanillaId,stem, Lifecycle.experimental());
+            LevelStem stem;
+            try{
+                stem=inl.get();
+            }catch(RuntimeException e){
+                logger().error("Error to build dimension: {}",e.toString());
+                return;
+            }
+
+            Util.registerIgnoreFreeze(Registries.LEVEL_STEM,WorldMagic.vanillaServer().registryAccess(),vanillaId,stem,Lifecycle.experimental());
+            Util.bindRegistration(Registries.LEVEL_STEM,WorldMagic.vanillaServer().registryAccess(),vanillaId,stem);
+
             dimensionId=vanillaId;
         }else throw new RuntimeException();
+
+        pluginManager().registerEvents(new EventListener(),instance());
 
         registered=true;
     }
@@ -422,8 +450,8 @@ public final class CustomWorld {
         level.setSpawnSettings(allowSettings.monsters,allowSettings.animals);
 
         BlockPos spawnPos=level.getSharedSpawnPos();
-        loadListener.updateSpawnPos(new ChunkPos(spawnPos));
 
+        loadListener.updateSpawnPos(new ChunkPos(spawnPos));
         level.setDefaultSpawnPos(spawnPos,level.getSharedSpawnAngle());
 
         logger().info("World {} loading done!",id.asMinimalString());

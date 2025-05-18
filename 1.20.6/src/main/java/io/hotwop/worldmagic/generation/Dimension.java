@@ -7,6 +7,7 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.RegistryLayer;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.chunk.ChunkGenerator;
@@ -58,9 +59,7 @@ public sealed interface Dimension permits Dimension.Reference,Dimension.Inline{
 
         public LevelStem get(){
             Registry<DimensionType> type=WorldMagic.vanillaServer().registryAccess().registryOrThrow(Registries.DIMENSION_TYPE);
-            Holder.Reference<DimensionType> reference=Holder.Reference.createStandAlone(type.holderOwner(), ResourceKey.create(Registries.DIMENSION_TYPE,new ResourceLocation(dimensionType.namespace(),dimensionType.value())));
-
-            return new LevelStem(reference,(generator instanceof GeneratorSettings.Vanilla(ChunkGenerator generatorVan))?generatorVan:emptyGenerator);
+            return new LevelStem(type.getHolderOrThrow(ResourceKey.create(Registries.DIMENSION_TYPE,new ResourceLocation(dimensionType.namespace(),dimensionType.value()))),(generator instanceof GeneratorSettings.Vanilla(ChunkGenerator generatorVan))?generatorVan:emptyGenerator);
         }
         public ResourceKey<LevelStem> getKey() {
             Registry<LevelStem> reg=WorldMagic.vanillaServer().registryAccess().registryOrThrow(Registries.LEVEL_STEM);
