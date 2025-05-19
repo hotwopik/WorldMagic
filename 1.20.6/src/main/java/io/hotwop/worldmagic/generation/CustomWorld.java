@@ -36,12 +36,8 @@ import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
 import net.minecraft.world.level.storage.*;
 import net.minecraft.world.level.validation.ContentValidationException;
 import org.bukkit.*;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
-import org.bukkit.event.Listener;
 import org.bukkit.event.world.WorldInitEvent;
 import org.bukkit.event.world.WorldLoadEvent;
-import org.bukkit.event.world.WorldUnloadEvent;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -54,8 +50,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -158,13 +153,8 @@ public final class CustomWorld {
     public final ResourceLocation vanillaLocId;
     public final ResourceKey<LevelStem> vanillaId;
     public final ResourceKey<Level> vanillaLevelId;
-
-    private ResourceKey<LevelStem> dimensionId;
-
-    private boolean registered=false;
-    public boolean registered(){
-        return registered;
-    }
+    public final ResourceKey<LevelStem> dimensionId;
+    public final LevelStem stem;
 
     private boolean loaded=false;
     public boolean loaded(){
@@ -173,6 +163,10 @@ public final class CustomWorld {
 
     private World bukkitWorld=null;
     private ServerLevel level=null;
+
+    public World world(){
+        return bukkitWorld;
+    }
 
     public CustomWorld(WorldFile file){
         id=file.id;
@@ -193,50 +187,16 @@ public final class CustomWorld {
         callbackLocation=file.callbackLocation==null?null:new ImmutableLocation(file.callbackLocation);
         allowSettings=new AllowSettings(file.allowSettings);
         gamerules=file.gamerules;
-    }
 
-    public final class EventListener implements Listener{
-        @EventHandler(priority=EventPriority.HIGHEST)
-        public void worldUnload(WorldUnloadEvent e){
-            if(loaded){
-                World world=e.getWorld();
-                if(world.equals(bukkitWorld)){
-                    logger().info("Redirecting world unload to WorldMagic...");
-                    e.setCancelled(true);
-                    unload();
-                }
-            }
-        }
-    }
+        if(dimension instanceof Dimension.Reference ref)dimensionId=ref.getKey();
+        else dimensionId=vanillaId;
 
-    public void register(){
-        if(shutdown)return;
-        if(registered)throw new RuntimeException("World already registered");
-
-        if(dimension instanceof Dimension.Reference ref){
-            dimensionId=ref.getKey();
-        }else if(dimension instanceof Dimension.Inline inl){
-            LevelStem stem;
-            try{
-                stem=inl.get();
-            }catch(RuntimeException e){
-                logger().error("Error to build dimension: {}",e.toString());
-                return;
-            }
-
-            Util.registerIgnoreFreeze(Registries.LEVEL_STEM,WorldMagic.vanillaServer().registryAccess(),vanillaId,stem,Lifecycle.experimental());
-            Util.bindRegistration(Registries.LEVEL_STEM,WorldMagic.vanillaServer().registryAccess(),vanillaId,stem);
-
-            dimensionId=vanillaId;
-        }else throw new RuntimeException();
-
-        pluginManager().registerEvents(new EventListener(),instance());
-
-        registered=true;
+        stem=dimension.get();
     }
 
     public void load(){
         if(shutdown)return;
+
         if(loaded)throw new RuntimeException("World already loaded!");
         loaded=true;
 
@@ -274,15 +234,15 @@ public final class CustomWorld {
 
     @SuppressWarnings("deprecation")
     private void loadProcess(){
-        if(!registered)throw new RuntimeException("World not registered");
-
         if(checkDuplication()){
             logger().error("Error to load custom world {}, world with that vanilla id or bukkit id already loaded",id.asMinimalString());
+            loaded=false;
             return;
         }
 
         if(folderPath.toFile().isFile()){
             logger().error("Error to load custom world {}, world \"folder\" is file",id.asMinimalString());
+            loaded=false;
             return;
         }
 
@@ -297,6 +257,7 @@ public final class CustomWorld {
             levelStorage=LevelStorageSource.createDefault(container).validateAndCreateAccess(folderName,dimensionId);
         } catch (ContentValidationException | IOException e) {
             logger().error("Error to load custom world {}, folder creation error: {}",id.asMinimalString(),e.toString());
+            loaded=false;
             return;
         }
 
@@ -319,6 +280,7 @@ public final class CustomWorld {
                 } catch (NbtException | ReportedNbtException | IOException ioexception1) {
                     MinecraftServer.LOGGER.error("Failed to load world data from {}", directory.oldDataFile(), ioexception1);
                     MinecraftServer.LOGGER.error("Failed to load world data from {} and {}. World files may be corrupted. Shutting down.", directory.dataFile(), directory.oldDataFile());
+                    loaded=false;
                     return;
                 }
 
@@ -327,21 +289,17 @@ public final class CustomWorld {
 
             if (worldinfo.requiresManualConversion()) {
                 MinecraftServer.LOGGER.info("This world must be opened in an older version (like 1.6.4) to be safely converted");
+                loaded=false;
                 return;
             }
 
             if (!worldinfo.isCompatible()) {
                 MinecraftServer.LOGGER.info("This world was created by an incompatible version.");
+                loaded=false;
                 return;
             }
         } else {
             save = null;
-        }
-
-        LevelStem stem=dimension.get();
-        if(stem==null){
-            logger().error("Error to load custom world {}, error to build dimension",id.asMinimalString());
-            return;
         }
 
         GeneratorSettings generator;

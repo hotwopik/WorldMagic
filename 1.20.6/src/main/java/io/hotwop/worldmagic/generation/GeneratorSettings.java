@@ -1,13 +1,20 @@
 package io.hotwop.worldmagic.generation;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.serialization.JsonOps;
 import io.hotwop.worldmagic.WorldMagic;
 import io.hotwop.worldmagic.util.dfu.ConfigurateOps;
 import io.hotwop.worldmagic.util.serializer.EnumSwitchSerializer;
+import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.server.dedicated.DedicatedServerProperties;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.world.level.chunk.ChunkGenerator;
+import net.minecraft.world.level.levelgen.FlatLevelSource;
+import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
+import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
+import net.minecraft.world.level.levelgen.flat.FlatLevelGeneratorSettings;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.jetbrains.annotations.NotNull;
 import org.spongepowered.configurate.ConfigurationNode;
@@ -40,8 +47,11 @@ public sealed interface GeneratorSettings permits GeneratorSettings.Vanilla,Gene
 
     record Vanilla(ChunkGenerator generator) implements GeneratorSettings {
         public DedicatedServerProperties.WorldDimensionData create(){
-            JsonObject obj=(JsonObject) ChunkGenerator.CODEC.encode(generator,WorldMagic.vanillaServer().registryAccess().createSerializationContext(JsonOps.INSTANCE),new JsonObject()).getOrThrow();
-            return new DedicatedServerProperties.WorldDimensionData(obj.getAsJsonObject("settings"),obj.getAsJsonPrimitive("type").getAsString());
+            if(generator instanceof FlatLevelSource fl){
+                JsonObject obj=(JsonObject)FlatLevelGeneratorSettings.CODEC.encode(fl.settings(),JsonOps.INSTANCE,new JsonObject()).getOrThrow();
+                return new DedicatedServerProperties.WorldDimensionData(obj,"flat");
+            }
+            return new DedicatedServerProperties.WorldDimensionData(new JsonObject(),"normal");
         }
 
         public static final class Serializer implements TypeSerializer<Vanilla> {

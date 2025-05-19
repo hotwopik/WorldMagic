@@ -14,10 +14,12 @@ import net.minecraft.server.dedicated.DedicatedServer;
 import net.minecraft.world.level.dimension.LevelStem;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Server;
+import org.bukkit.World;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.world.WorldSaveEvent;
+import org.bukkit.event.world.WorldUnloadEvent;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitScheduler;
@@ -97,13 +99,18 @@ public final class WorldMagic extends JavaPlugin {
         worldsPath= dataFolderPath.resolve("worlds");
         worldsPath.toFile().mkdir();
         loadWorldFiles();
-        worldFiles.forEach((id,file)->worlds.add(new CustomWorld(file)));
+        worldFiles.forEach((id,file)->{
+            try{
+                worlds.add(new CustomWorld(file));
+            }catch(RuntimeException e){
+                logger().info("Error to build world: {}",e.toString());
+            }
+        });
     }
 
     @Override
     public void onEnable(){
         worlds.forEach(wr->{
-            wr.register();
             if(wr.loading.startup())wr.load();
         });
 
@@ -178,44 +185,28 @@ public final class WorldMagic extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        List<ResourceKey<LevelStem>> dimensions=new ArrayList<>();
-
         worlds.forEach(wr->{
             if(wr.loaded())wr.unload();
-            if(wr.dimension instanceof Dimension.Inline)dimensions.add(wr.vanillaId);
         });
 
         CustomWorld.shutdownAsync();
-        Util.unregisterAll(Registries.LEVEL_STEM,vanillaServer.registryAccess(),dimensions);
     }
 
 
     public static final class EventListener implements Listener {
         private EventListener(){}
 
-        private boolean saving=false;
-
         @EventHandler(priority=EventPriority.HIGHEST)
-        public void worldSave(WorldSaveEvent e){
-            if(!saving){
-                saving=true;
+        public void worldUnload(WorldUnloadEvent e){
+            World world=e.getWorld();
 
-                List<ResourceKey<LevelStem>> dimensions=new ArrayList<>();
-                Map<ResourceKey<LevelStem>,LevelStem> map=new HashMap<>();
-
-                worlds.forEach(wr->{
-                    if(wr.registered()&&wr.dimension instanceof Dimension.Inline inl){
-                        dimensions.add(wr.vanillaId);
-                        map.put(wr.vanillaId,inl.get());
-                    }
-                });
-
-                Util.unregisterAll(Registries.LEVEL_STEM,vanillaServer.registryAccess(),dimensions);
-                scheduler.runTask(instance,()->{
-                    Util.registerIgnoreFreezeAll(Registries.LEVEL_STEM,vanillaServer.registryAccess(),map,Lifecycle.experimental());
-                    Util.boundRegistrations(Registries.LEVEL_STEM,vanillaServer.registryAccess(),map);
-                    saving=false;
-                });
+            for(CustomWorld wr:worlds){
+                if(wr.loaded()&&wr.world().equals(world)){
+                    logger.info("Redirecting unload to WorldMagic...");
+                    e.setCancelled(true);
+                    wr.unload();
+                    break;
+                }
             }
         }
     }
