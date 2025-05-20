@@ -23,11 +23,48 @@ import org.jetbrains.annotations.Nullable;
 import org.spongepowered.configurate.ConfigurationNode;
 import org.spongepowered.configurate.serialize.SerializationException;
 
+import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public final class Util{
     private Util(){}
+
+    private static final Field frozenField;
+    private static final Field byIdField;
+    private static final Field toIdField;
+    private static final Field byLocationField;
+    private static final Field byKeyField;
+    private static final Field byValueField;
+    private static final Field registrationInfosField;
+
+    private static final Field valueHolderField;
+    static{
+        try {
+            frozenField=MappedRegistry.class.getDeclaredField("frozen");
+            byIdField=MappedRegistry.class.getDeclaredField("byId");
+            toIdField=MappedRegistry.class.getDeclaredField("toId");
+            byLocationField=MappedRegistry.class.getDeclaredField("byLocation");
+            byKeyField=MappedRegistry.class.getDeclaredField("byKey");
+            byValueField=MappedRegistry.class.getDeclaredField("byValue");
+            registrationInfosField=MappedRegistry.class.getDeclaredField("registrationInfos");
+
+            valueHolderField=Holder.Reference.class.getDeclaredField("value");
+        } catch (NoSuchFieldException e) {
+            throw new RuntimeException(e);
+        }
+
+        frozenField.setAccessible(true);
+        byIdField.setAccessible(true);
+        toIdField.setAccessible(true);
+        byLocationField.setAccessible(true);
+        byKeyField.setAccessible(true);
+        byValueField.setAccessible(true);
+        registrationInfosField.setAccessible(true);
+
+        valueHolderField.setAccessible(true);
+    }
 
     @SuppressWarnings("unchecked")
     public static void fromMap(ConfigurationNode node, Object value) throws SerializationException {
@@ -47,6 +84,151 @@ public final class Util{
     public static <T> @Nullable T registryGet(ResourceKey<Registry<T>> registry, RegistryAccess access, NamespacedKey id){
         Registry<T> reg=access.registryOrThrow(registry);
         return reg.get(new ResourceLocation(id.namespace(),id.value()));
+    }
+
+    public static <T> void registerIgnoreFreeze(ResourceKey<Registry<T>> registry, RegistryAccess access,ResourceKey<T> id,T value,Lifecycle lifecycle){
+        Registry<T> reg=access.registryOrThrow(registry);
+
+        if(reg instanceof WritableRegistry<T> wr){
+            if(wr instanceof MappedRegistry<T> map){
+                boolean frozen;
+                try{
+                    frozen=frozenField.getBoolean(map);
+                } catch (IllegalAccessException e) {
+                    throw new RuntimeException(e);
+                }
+
+                if(frozen){
+                    try {
+                        frozenField.setBoolean(map, false);
+                    } catch (IllegalAccessException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+
+                map.register(id,value,new RegistrationInfo(Optional.empty(),lifecycle));
+
+                if(frozen){
+                    try {
+                        frozenField.setBoolean(map, true);
+                    } catch (IllegalAccessException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }else wr.register(id,value,new RegistrationInfo(Optional.empty(),lifecycle));
+        }else throw new RuntimeException("Registry isn't writable at all");
+    }
+    public static <T> void bindRegistration(ResourceKey<Registry<T>> registry, RegistryAccess access, ResourceKey<T> id, T value){
+        Registry<T> reg=access.registryOrThrow(registry);
+
+        Optional<Holder.Reference<T>> ref=reg.getHolder(id);
+        if(ref.isPresent()){
+            Holder.Reference<T> hold=ref.get();
+
+            try{
+                valueHolderField.set(hold,value);
+            }catch(IllegalAccessException e){
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> void unregisterAll(ResourceKey<Registry<T>> registry,RegistryAccess access,List<ResourceKey<T>> ids){
+        Registry<T> reg=access.registryOrThrow(registry);
+
+        if(reg instanceof MappedRegistry<T>){
+            ObjectList<Holder.Reference<T>> byId;
+            Reference2IntMap<T> toId;
+            Map<ResourceLocation, Holder.Reference<T>> byLocation;
+            Map<ResourceKey<T>, Holder.Reference<T>> byKey;
+            Map<T, Holder.Reference<T>> byValue;
+            Map<ResourceKey<T>, RegistrationInfo> registrationInfos;
+
+            try{
+                byId=(ObjectList<Holder.Reference<T>>)byIdField.get(reg);
+                toId=(Reference2IntMap<T>)toIdField.get(reg);
+                byLocation=(Map<ResourceLocation, Holder.Reference<T>>)byLocationField.get(reg);
+                byKey=(Map<ResourceKey<T>, Holder.Reference<T>>)byKeyField.get(reg);
+                byValue=(Map<T, Holder.Reference<T>>)byValueField.get(reg);
+                registrationInfos=(Map<ResourceKey<T>, RegistrationInfo>)registrationInfosField.get(reg);
+            }catch(IllegalAccessException e){
+                throw new RuntimeException(e);
+            }
+
+            for(ResourceKey<T> id:ids){
+                T value=reg.getOrThrow(id);
+                Holder.Reference<T> ref=reg.getHolderOrThrow(id);
+                ResourceLocation loc=id.location();
+
+                int index=byId.indexOf(ref);
+                byId.remove(ref);
+
+                toId.remove(value,index);
+                byLocation.remove(loc);
+                byKey.remove(id);
+                byValue.remove(value);
+                registrationInfos.remove(id);
+            }
+        }else throw new RuntimeException("Can't uregister not mapped registry");
+    }
+
+    public static <T> void registerIgnoreFreezeAll(ResourceKey<Registry<T>> registry,RegistryAccess access,Map<ResourceKey<T>,T> entries,Lifecycle lifecycle){
+        Registry<T> reg=access.registryOrThrow(registry);
+
+        if(reg instanceof WritableRegistry<T> wr){
+            if(wr instanceof MappedRegistry<T> map){
+                boolean frozen;
+                try{
+                    frozen=frozenField.getBoolean(map);
+                } catch (IllegalAccessException e) {
+                    throw new RuntimeException(e);
+                }
+
+                if(frozen){
+                    try {
+                        frozenField.setBoolean(map, false);
+                    } catch (IllegalAccessException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+
+                registerIgnoreFreezeAllOp(wr,entries,lifecycle);
+
+                if(frozen){
+                    try {
+                        frozenField.setBoolean(map, true);
+                    } catch (IllegalAccessException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }else registerIgnoreFreezeAllOp(wr,entries,lifecycle);
+        }else throw new RuntimeException("Registry isn't writable at all");
+    }
+
+    private static <T> void registerIgnoreFreezeAllOp(WritableRegistry<T> registry,Map<ResourceKey<T>,T> entries,Lifecycle lifecycle){
+        RegistrationInfo info=new RegistrationInfo(Optional.empty(),lifecycle);
+
+        for(Map.Entry<ResourceKey<T>,T> entry:entries.entrySet()){
+            registry.register(entry.getKey(),entry.getValue(),info);
+        }
+    }
+
+    public static <T> void bindRegistrations(ResourceKey<Registry<T>> registry,RegistryAccess access,Map<ResourceKey<T>,T> entries){
+        Registry<T> reg=access.registryOrThrow(registry);
+
+        for(Map.Entry<ResourceKey<T>,T> entry:entries.entrySet()){
+            Optional<Holder.Reference<T>> ref=reg.getHolder(entry.getKey());
+            if(ref.isPresent()){
+                Holder.Reference<T> hold=ref.get();
+
+                try{
+                    valueHolderField.set(hold,entry.getValue());
+                }catch(IllegalAccessException e){
+                    throw new RuntimeException(e);
+                }
+            }
+        }
     }
 
     public static net.minecraft.world.Difficulty mapDifficulty(Difficulty difficulty){

@@ -74,9 +74,6 @@ public final class WorldFile{
 
         @Comment("Default difficulty in the world, can be PEACEFUL, EASY, NORMAL or HARD, default to NORMAL")
         public Difficulty difficulty=Difficulty.NORMAL;
-
-        @Comment("Should hardcore mode be enabled in the world, bool, default to false")
-        public boolean hardcore=false;
     }
 
     @Comment("Vanilla world configuration, namespaced id reference or inline, default to overworld")
@@ -130,13 +127,14 @@ public final class WorldFile{
         public float yaw=0;
     }
 
-    @Comment("Configure which categories of mobs are allowed in world")
+    @Comment("Configure what allowed in world")
     public AllowSettings allowSettings;
 
     @ConfigSerializable
     public static final class AllowSettings{
         public boolean animals=true;
         public boolean monsters=true;
+        public boolean pvp=true;
     }
 
     @Comment("Configure gamerules in the world, set override to true to make it reset on every load")

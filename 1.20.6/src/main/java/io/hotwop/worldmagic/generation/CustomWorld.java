@@ -107,11 +107,10 @@ public final class CustomWorld {
         boolean generateStructures,
         boolean bonusChest,
         GameType defaultGamemode,
-        Difficulty difficulty,
-        boolean hardcore
+        Difficulty difficulty
     ){
         public WorldProperties(WorldFile.WorldProperties file){
-            this(file.seed,file.generateStructures,file.bonusChest,Util.mapGameMode(file.defaultGamemode),Util.mapDifficulty(file.difficulty),file.hardcore);
+            this(file.seed,file.generateStructures,file.bonusChest,Util.mapGameMode(file.defaultGamemode),Util.mapDifficulty(file.difficulty));
         }
     }
 
@@ -142,10 +141,11 @@ public final class CustomWorld {
 
     public record AllowSettings(
         boolean animals,
-        boolean monsters
+        boolean monsters,
+        boolean pvp
     ){
         public AllowSettings(WorldFile.AllowSettings file){
-            this(file.animals,file.monsters);
+            this(file.animals,file.monsters,file.pvp);
         }
     }
 
@@ -369,6 +369,7 @@ public final class CustomWorld {
             (pluginBiomeProvider==null)?null:WorldCreator.getBiomeProviderForName(bukkitId,pluginBiomeProvider,Bukkit.getConsoleSender())
         );
         level.noSave=!loading.save;
+        level.pvpMode=allowSettings.pvp;
 
         vanillaServer().addLevel(level);
 
@@ -384,26 +385,29 @@ public final class CustomWorld {
 
         if(spawnPosition!=null&&spawnPosition.override)setSpawn(level,levelData);
 
+        boolean init;
         if(!levelData.isInitialized()){
+            init=true;
+
             if(spawnPosition!=null){
                 if(!spawnPosition.override)setSpawn(level,levelData);
-
-                if (worldProperties.bonusChest){
-                    level.registryAccess().registry(Registries.CONFIGURED_FEATURE).flatMap((registry)->registry.getHolder(MiscOverworldFeatures.BONUS_CHEST))
-                        .ifPresent((holder)->((ConfiguredFeature<?, ?>)holder.value())
-                            .place(level, level.chunkSource.getGenerator(), level.random, levelData.getSpawnPos())
-                        );
-                }
             }else{
                 try{
-                    vanillaSetSpawn.invoke(null,level,levelData,worldProperties.bonusChest,level.isDebug());
+                    vanillaSetSpawn.invoke(null,level,levelData,false,level.isDebug());
                 } catch (IllegalAccessException|InvocationTargetException e) {
                     throw new RuntimeException(e);
                 }
             }
 
+            if(!loading.async&&worldProperties.bonusChest){
+                level.registryAccess().registry(Registries.CONFIGURED_FEATURE).flatMap((registry)->registry.getHolder(MiscOverworldFeatures.BONUS_CHEST))
+                    .ifPresent(holder->holder.value()
+                        .place(level, level.chunkSource.getGenerator(), level.random, levelData.getSpawnPos())
+                    );
+            }
+
             levelData.setInitialized(true);
-        }
+        }else init=false;
 
         level.setSpawnSettings(allowSettings.monsters,allowSettings.animals);
 
@@ -415,6 +419,13 @@ public final class CustomWorld {
         logger().info("World {} loading done!",id.asMinimalString());
         if(!loading.async)postLoadProcess(loadRadius);
         else scheduler().runTask(instance(),()->{
+            if(init&&worldProperties.bonusChest){
+                level.registryAccess().registry(Registries.CONFIGURED_FEATURE).flatMap((registry)->registry.getHolder(MiscOverworldFeatures.BONUS_CHEST))
+                    .ifPresent(holder->holder.value()
+                        .place(level, level.chunkSource.getGenerator(), level.random, levelData.getSpawnPos())
+                    );
+            }
+
             pluginManager().callEvent(new WorldInitEvent(bukkitWorld));
             postLoadProcess(loadRadius);
         });
@@ -504,7 +515,7 @@ public final class CustomWorld {
         WorldDimensions.Complete dimensionsOp=new WorldDimensions.Complete(dimensionRegistry,specialProperty);
 
         WorldOptions worldOptions=new WorldOptions(worldProperties.seed,worldProperties.generateStructures,worldProperties.bonusChest);
-        LevelSettings levelSettings=new LevelSettings(bukkitId,worldProperties.defaultGamemode,worldProperties.hardcore,worldProperties.difficulty,false,gamerules==null?new GameRules():gamerules.gameRules,worldLoader().dataConfiguration());
+        LevelSettings levelSettings=new LevelSettings(bukkitId,worldProperties.defaultGamemode,Bukkit.isHardcore(),worldProperties.difficulty,false,gamerules==null?new GameRules():gamerules.gameRules,worldLoader().dataConfiguration());
 
         return new PrimaryLevelData(levelSettings,worldOptions,dimensionsOp.specialWorldProperty(),Lifecycle.experimental());
     }
