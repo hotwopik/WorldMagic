@@ -1,15 +1,3 @@
-package io.hotwop.worldmagic.util.dfu;
-
-import com.mojang.datafixers.util.Pair;
-import com.mojang.serialization.MapLike;
-import org.spongepowered.configurate.BasicConfigurationNode;
-import org.spongepowered.configurate.ConfigurationNode;
-import org.spongepowered.configurate.ConfigurationOptions;
-
-import javax.annotation.Nullable;
-import java.util.Map;
-import java.util.stream.Stream;
-
 /*
  * Configurate
  * Copyright (C) zml and Configurate contributors
@@ -26,7 +14,17 @@ import java.util.stream.Stream;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-// Fixed version of org.spongepowered:configurate-extra-dfu4:4.2.0, original can be founded at https://github.com/SpongePowered/Configurate/tree/trunk/extra/dfu4/src/main/java/org/spongepowered/configurate/extra/dfu/v4
+package io.hotwop.worldmagic.util.dfu;
+
+import com.mojang.datafixers.util.Pair;
+import com.mojang.serialization.MapLike;
+import org.spongepowered.configurate.BasicConfigurationNode;
+import org.spongepowered.configurate.ConfigurationNode;
+import org.spongepowered.configurate.ConfigurationOptions;
+
+import javax.annotation.Nullable;
+import java.util.Map;
+import java.util.stream.Stream;
 
 public final class NodeMaplike implements MapLike<ConfigurationNode> {
     private final ConfigurateOps ops;

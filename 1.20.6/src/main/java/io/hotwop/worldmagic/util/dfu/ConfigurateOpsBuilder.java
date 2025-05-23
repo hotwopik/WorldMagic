@@ -1,15 +1,3 @@
-package io.hotwop.worldmagic.util.dfu;
-
-import static java.util.Objects.requireNonNull;
-
-import com.mojang.serialization.Dynamic;
-import org.jetbrains.annotations.NotNull;
-import org.spongepowered.configurate.CommentedConfigurationNode;
-import org.spongepowered.configurate.ConfigurationNode;
-import org.spongepowered.configurate.ConfigurationNodeFactory;
-import org.spongepowered.configurate.ConfigurationOptions;
-import org.spongepowered.configurate.serialize.TypeSerializerCollection;
-
 /*
  * Configurate
  * Copyright (C) zml and Configurate contributors
@@ -26,55 +14,142 @@ import org.spongepowered.configurate.serialize.TypeSerializerCollection;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-// Fixed version of org.spongepowered:configurate-extra-dfu4:4.2.0, original can be founded at https://github.com/SpongePowered/Configurate/tree/trunk/extra/dfu4/src/main/java/org/spongepowered/configurate/extra/dfu/v4
+package io.hotwop.worldmagic.util.dfu;
 
-public final class ConfigurateOpsBuilder{
-    private ConfigurationNodeFactory<? extends @NotNull ConfigurationNode> nodeSupplier = CommentedConfigurationNode.factory();
+import static java.util.Objects.requireNonNull;
+
+import com.mojang.serialization.Dynamic;
+import org.spongepowered.configurate.CommentedConfigurationNode;
+import org.spongepowered.configurate.ConfigurationNode;
+import org.spongepowered.configurate.ConfigurationNodeFactory;
+import org.spongepowered.configurate.ConfigurationOptions;
+import org.spongepowered.configurate.serialize.TypeSerializerCollection;
+
+/**
+ * A builder for {@link ConfigurateOps} instances.
+ *
+ * @since 4.3.0
+ */
+public final class ConfigurateOpsBuilder {
+
+    private ConfigurationNodeFactory<? extends ConfigurationNode> nodeSupplier = CommentedConfigurationNode.factory();
     private boolean compressed;
     private ConfigurateOps.Protection readProtection = ConfigurateOps.Protection.COPY_DEEP;
     private ConfigurateOps.Protection writeProtection = ConfigurateOps.Protection.COPY_DEEP;
 
     ConfigurateOpsBuilder() {}
 
-    public ConfigurateOpsBuilder factory(final ConfigurationNodeFactory<? extends @NotNull ConfigurationNode> supplier) {
+    /**
+     * Set the node factory for the returned ops.
+     *
+     * <p>The default node factory wil create {@link CommentedConfigurationNode}
+     * instances using Confabricate's minecraft serializers.
+     *
+     * @param supplier source for new nodes created to store values in
+     *     the {@code create*} methods
+     * @return this builder
+     * @since 4.3.0
+     */
+    public ConfigurateOpsBuilder factory(final ConfigurationNodeFactory<? extends ConfigurationNode> supplier) {
         this.nodeSupplier = requireNonNull(supplier, "nodeSupplier");
         return this;
     }
 
+    /**
+     * Set a node factory that will use the provided collection.
+     *
+     * <p>This will replace any set {@link #factory(ConfigurationNodeFactory)}.
+     *
+     * @param collection type serializers to use for nodes.
+     * @return this builder
+     * @since 4.3.0
+     */
     public ConfigurateOpsBuilder factoryFromSerializers(final TypeSerializerCollection collection) {
         requireNonNull(collection, "collection");
         return factory(options -> CommentedConfigurationNode.root(options.serializers(collection)));
     }
 
+    /**
+     * Set the node factory based on the options of the provided node.
+     *
+     * <p>This will replace any set {@link #factory(ConfigurationNodeFactory)}.
+     *
+     * @param node node to use
+     * @return this builder
+     * @since 4.3.0
+     */
     public ConfigurateOpsBuilder factoryFromNode(final ConfigurationNode node) {
         final ConfigurationOptions options = requireNonNull(node, "node").options();
-        return factory(new ConfigurationNodeFactory<>() {
+        return factory(new ConfigurationNodeFactory<ConfigurationNode>() {
             @Override
-            public ConfigurationNode createNode(final @NotNull ConfigurationOptions options) {
+            public ConfigurationNode createNode(final ConfigurationOptions options) {
                 return CommentedConfigurationNode.root(options);
             }
 
-            @Override public @NotNull ConfigurationOptions defaultOptions() {
+            @Override public ConfigurationOptions defaultOptions() {
                 return options;
             }
         });
     }
 
+    /**
+     * Set whether {@link com.mojang.serialization.Keyable} values should be compressed.
+     *
+     * @param compressed whether to compress values
+     * @return this builder
+     * @see ConfigurateOps#compressMaps() for more about what compression is
+     * @since 4.3.0
+     */
     public ConfigurateOpsBuilder compressed(final boolean compressed) {
         this.compressed = compressed;
         return this;
     }
 
+    /**
+     * Set how nodes returned from read methods will be protected
+     * from modification.
+     *
+     * <p>For read protection, the protection level refers to how the attached
+     * node will be affected by modifications made to the nodes returned from
+     * {@code get*} methods.
+     *
+     * @param readProtection protection level
+     * @return this builder
+     * @since 4.3.0
+     */
     public ConfigurateOpsBuilder readProtection(final ConfigurateOps.Protection readProtection) {
         this.readProtection = requireNonNull(readProtection, "readProtection");
         return this;
     }
 
+    /**
+     * Set how nodes provided to mutator methods will be protected
+     * from modification.
+     *
+     * <p>For write protection, the protection level refers to how the provided
+     * {@code prefix} node will be protected from seeing changes to the
+     * operation
+     *
+     * @param writeProtection protection level
+     * @return this builder
+     * @since 4.3.0
+     */
     public ConfigurateOpsBuilder writeProtection(final ConfigurateOps.Protection writeProtection) {
         this.writeProtection = requireNonNull(writeProtection, "writeProtection");
         return this;
     }
 
+    /**
+     * Set how nodes will be protected from both read and write modifications.
+     *
+     * @param protection protection level
+     * @return this builder
+     * @see #readProtection(ConfigurateOps.Protection) for how this level
+     *      affects value reads
+     * @see #writeProtection(ConfigurateOps.Protection) for how this level
+     *      affects value writes
+     * @since 4.3.0
+     */
     public ConfigurateOpsBuilder readWriteProtection(final ConfigurateOps.Protection protection) {
         requireNonNull(protection, "protection");
         this.readProtection = protection;
@@ -82,10 +157,30 @@ public final class ConfigurateOpsBuilder{
         return this;
     }
 
+    /**
+     * Create a new ops instance.
+     *
+     * <p>All options have defaults provided and all setters validate their
+     * input, so by the time this method is reached the builder will be in a
+     * valid state.
+     *
+     * @return the new instance
+     * @since 4.3.0
+     */
     public ConfigurateOps build() {
         return new ConfigurateOps(this.nodeSupplier, this.compressed, this.readProtection, this.writeProtection);
     }
 
+    /**
+     * Build a new ops instance, returned as part of a {@linkplain Dynamic}.
+     *
+     * <p>Returned ops instances will not take type serializers or other options
+     * from the provided node. For that, use {@link #factoryFromNode(ConfigurationNode)}.
+     *
+     * @param node wrapped node
+     * @return new dynamic
+     * @since 4.3.0
+     */
     public Dynamic<ConfigurationNode> buildWrapping(final ConfigurationNode node) {
         return new Dynamic<>(build(), node);
     }

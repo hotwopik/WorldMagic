@@ -262,7 +262,7 @@ public final class CustomWorld {
         }
 
         Dynamic<?> save;
-        if (levelStorage.hasWorldData() && !loading.override) {
+        if (levelStorage.hasWorldData()) {
             LevelSummary worldinfo;
 
             try {
@@ -317,15 +317,7 @@ public final class CustomWorld {
         PrimaryLevelData levelData;
         PrimaryLevelData.SpecialWorldProperty specialProperty;
 
-        if(save!=null){
-            LevelDataAndDimensions saveData=LevelStorageSource.getLevelDataAndDimensions(save,worldLoader().dataConfiguration(),WorldMagic.vanillaServer().registryAccess().registryOrThrow(Registries.LEVEL_STEM),worldLoader().datapackWorldgen());
-
-            dimensionRegistry=saveData.dimensions().dimensions();
-            levelData=(PrimaryLevelData)saveData.worldData();
-            specialProperty=saveData.dimensions().specialWorldProperty();
-
-            if(gamerules!=null&&gamerules.override)levelData.getGameRules().assignFrom(gamerules.gameRules,null);
-        }else{
+        if(loading.override||save==null){
             WorldDimensions worldDimensions=generator.create().create(worldLoader().datapackWorldgen());
 
             WritableRegistry<LevelStem> writableDimensionRegistry = new MappedRegistry<>(Registries.LEVEL_STEM, Lifecycle.experimental());
@@ -338,6 +330,30 @@ public final class CustomWorld {
 
             specialProperty=specialWorldProperty(generator);
             levelData=getPrimaryLevelData(dimensionRegistry,specialProperty);
+
+            if(save!=null){
+                LevelDataAndDimensions saveData=LevelStorageSource.getLevelDataAndDimensions(save,worldLoader().dataConfiguration(),WorldMagic.vanillaServer().registryAccess().registryOrThrow(Registries.LEVEL_STEM),worldLoader().datapackWorldgen());
+                PrimaryLevelData oldLevelData=(PrimaryLevelData)saveData.worldData();
+
+                levelData.setDayTime(oldLevelData.getDayTime());
+
+                levelData.setClearWeatherTime(oldLevelData.getClearWeatherTime());
+                levelData.setRainTime(oldLevelData.getRainTime());
+                levelData.setThunderTime(oldLevelData.getThunderTime());
+                levelData.setGameTime(oldLevelData.getGameTime());
+
+                levelData.setRaining(oldLevelData.isRaining());
+                levelData.setThundering(oldLevelData.isThundering());
+                levelData.setInitialized(oldLevelData.isInitialized());
+            }
+        }else{
+            LevelDataAndDimensions saveData=LevelStorageSource.getLevelDataAndDimensions(save,worldLoader().dataConfiguration(),WorldMagic.vanillaServer().registryAccess().registryOrThrow(Registries.LEVEL_STEM),worldLoader().datapackWorldgen());
+
+            dimensionRegistry=saveData.dimensions().dimensions();
+            levelData=(PrimaryLevelData)saveData.worldData();
+            specialProperty=saveData.dimensions().specialWorldProperty();
+
+            if(gamerules!=null&&gamerules.override)levelData.getGameRules().assignFrom(gamerules.gameRules,null);
         }
 
         levelData.customDimensions=dimensionRegistry;

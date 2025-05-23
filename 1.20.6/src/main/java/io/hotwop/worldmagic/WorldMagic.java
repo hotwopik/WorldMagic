@@ -1,24 +1,17 @@
 package io.hotwop.worldmagic;
 
-import com.mojang.serialization.Lifecycle;
 import io.hotwop.worldmagic.file.WorldFile;
 import io.hotwop.worldmagic.generation.CustomWorld;
-import io.hotwop.worldmagic.generation.Dimension;
-import io.hotwop.worldmagic.util.Util;
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.WorldLoader;
 import net.minecraft.server.dedicated.DedicatedServer;
-import net.minecraft.world.level.dimension.LevelStem;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Server;
 import org.bukkit.World;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.world.WorldSaveEvent;
 import org.bukkit.event.world.WorldUnloadEvent;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -46,6 +39,15 @@ public final class WorldMagic extends JavaPlugin {
     private static WorldMagic instance;
 
     private static Path worldsPath;
+    private static Path dimensionTypesPath;
+    private static Path worldGenPath;
+
+    public static Path dimensionTypesPath(){
+        return dimensionTypesPath;
+    }
+    public static Path worldGenPath(){
+        return worldGenPath;
+    }
 
     private static WorldLoader.DataLoadContext worldLoader;
     private static DedicatedServer vanillaServer;
@@ -96,9 +98,20 @@ public final class WorldMagic extends JavaPlugin {
         dataFolder.mkdirs();
         Path dataFolderPath=dataFolder.toPath();
 
-        worldsPath= dataFolderPath.resolve("worlds");
+        worldsPath=dataFolderPath.resolve("worlds");
         worldsPath.toFile().mkdir();
+
+        dimensionTypesPath=dataFolderPath.resolve("dimension-types");
+        dimensionTypesPath.toFile().mkdir();
+
+        worldGenPath=dataFolderPath.resolve("worldgen");
+        worldGenPath.toFile().mkdir();
+
+        WorldGenProcessor.loadWorldGen();
+        WorldGenProcessor.loadDimensionTypes();
         loadWorldFiles();
+
+        logger.info("Building worlds...");
         worldFiles.forEach((id,file)->{
             try{
                 worlds.add(new CustomWorld(file));
@@ -110,6 +123,7 @@ public final class WorldMagic extends JavaPlugin {
 
     @Override
     public void onEnable(){
+        logger.info("Loading worlds...");
         worlds.forEach(wr->{
             if(wr.loading.startup())wr.load();
         });
@@ -126,7 +140,7 @@ public final class WorldMagic extends JavaPlugin {
         try(Stream<Path> stream=Files.walk(worldsPath)){
             stream.filter(pt->Files.isRegularFile(pt)&&pt.toFile().getName().endsWith(".yml")).forEach(pt->loaders.computeIfAbsent(pt,WorldFile::createLoader));
         }catch(IOException e){
-            logger.error("Error to load world files: {}",e.toString());
+            logger.error("Error to load world files:\n {}",e.toString());
             return;
         }
 
@@ -138,7 +152,7 @@ public final class WorldMagic extends JavaPlugin {
             try{
                 CommentedConfigurationNode node=loader.load();
                 if(node.isNull()){
-                    logger.warn("File {} is empty", path);
+                    logger.warn("File {} is empty, error to load world file", path);
                     return;
                 }
                 WorldFile file=node.require(WorldFile.class);
@@ -165,7 +179,7 @@ public final class WorldMagic extends JavaPlugin {
                 worldFiles.put(file.id,file);
                 patches.put(file,path);
             }catch(ConfigurateException ex){
-                logger.warn("Error to load item file {}: {}",path.toString(),ex.getMessage());
+                logger.warn("Error to load world file {}:\n  {}",path.toString(),ex.getMessage());
             }
         });
 

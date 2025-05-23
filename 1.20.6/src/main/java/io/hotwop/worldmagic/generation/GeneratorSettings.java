@@ -1,19 +1,14 @@
 package io.hotwop.worldmagic.generation;
 
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.serialization.JsonOps;
 import io.hotwop.worldmagic.WorldMagic;
 import io.hotwop.worldmagic.util.dfu.ConfigurateOps;
 import io.hotwop.worldmagic.util.serializer.EnumSwitchSerializer;
-import net.minecraft.core.RegistryAccess;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.server.dedicated.DedicatedServerProperties;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.FlatLevelSource;
-import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
-import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
 import net.minecraft.world.level.levelgen.flat.FlatLevelGeneratorSettings;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.jetbrains.annotations.NotNull;
@@ -60,7 +55,7 @@ public sealed interface GeneratorSettings permits GeneratorSettings.Vanilla,Gene
 
             public Vanilla deserialize(@NotNull Type type, @NotNull ConfigurationNode node) throws SerializationException {
                 ChunkGenerator gen = ChunkGenerator.CODEC.parse(WorldMagic.vanillaServer().registryAccess().createSerializationContext(ConfigurateOps.instance()), node)
-                    .getOrThrow(err -> new SerializationException(node, GeneratorSettings.class, "Error to deserialize vanilla generator settings: " + err));
+                    .getOrThrow(err -> new SerializationException(node, GeneratorSettings.class, "Error to deserialize vanilla generator settings:\n     " + err.replace(";","\n    ")));
                 return new Vanilla(gen);
             }
 
@@ -68,7 +63,7 @@ public sealed interface GeneratorSettings permits GeneratorSettings.Vanilla,Gene
                 if (obj == null) return;
 
                 ChunkGenerator.CODEC.encode(obj.generator,WorldMagic.vanillaServer().registryAccess().createSerializationContext(ConfigurateOps.instance()),node)
-                    .getOrThrow(err -> new SerializationException(node, GeneratorSettings.class, "Error to serialize vanilla generator settings: " + err));
+                    .getOrThrow(err -> new SerializationException(node, GeneratorSettings.class, "Error to serialize vanilla generator settings:\n     " + err.replace(";","\n    ")));
             }
         }
     }
