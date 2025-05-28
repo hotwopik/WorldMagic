@@ -20,8 +20,6 @@ import org.bukkit.GameMode;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
 import org.jetbrains.annotations.Nullable;
-import org.spongepowered.configurate.ConfigurationNode;
-import org.spongepowered.configurate.serialize.SerializationException;
 
 import java.lang.reflect.Field;
 import java.util.List;
@@ -64,21 +62,6 @@ public final class Util{
         registrationInfosField.setAccessible(true);
 
         valueHolderField.setAccessible(true);
-    }
-
-    @SuppressWarnings("unchecked")
-    public static void fromMap(ConfigurationNode node, Object value) throws SerializationException {
-        if(value instanceof Map){
-            for(Map.Entry<Object,Object> entry:((Map<Object,Object>)value).entrySet()){
-                fromMap(node.node(entry.getKey()),entry.getValue());
-            }
-        }
-        else if(value instanceof List){
-            for(Object val:(List<Object>)value){
-                fromMap(node.appendListNode(),val);
-            }
-        }
-        else node.set(value);
     }
 
     public static <T> @Nullable T registryGet(ResourceKey<Registry<T>> registry, RegistryAccess access, NamespacedKey id){

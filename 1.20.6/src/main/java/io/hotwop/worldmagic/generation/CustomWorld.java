@@ -32,7 +32,6 @@ import net.minecraft.world.level.border.WorldBorder;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.dimension.LevelStem;
 import net.minecraft.world.level.levelgen.*;
-import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
 import net.minecraft.world.level.storage.*;
 import net.minecraft.world.level.validation.ContentValidationException;
 import org.bukkit.*;
@@ -120,10 +119,11 @@ public final class CustomWorld {
         boolean override,
         boolean loadChunks,
         boolean save,
-        boolean folderDeletion
+        boolean folderDeletion,
+        boolean loadControl
     ){
         public Loading(WorldFile.Loading file){
-            this(file.async,file.startup,file.override,file.loadChunks,file.save,file.folderDeletion);
+            this(file.async,file.startup,file.override,file.loadChunks,file.save,file.folderDeletion,file.loadControl);
         }
     }
 
@@ -165,7 +165,12 @@ public final class CustomWorld {
     private ServerLevel level=null;
 
     public World world(){
+        if(!loaded)return null;
         return bukkitWorld;
+    }
+    public ServerLevel level(){
+        if(!loaded)return null;
+        return level;
     }
 
     public CustomWorld(WorldFile file){
@@ -345,6 +350,8 @@ public final class CustomWorld {
                 levelData.setRaining(oldLevelData.isRaining());
                 levelData.setThundering(oldLevelData.isThundering());
                 levelData.setInitialized(oldLevelData.isInitialized());
+
+                if(!gamerules.override)levelData.getGameRules().assignFrom(oldLevelData.getGameRules(),null);
             }
         }else{
             LevelDataAndDimensions saveData=LevelStorageSource.getLevelDataAndDimensions(save,worldLoader().dataConfiguration(),WorldMagic.vanillaServer().registryAccess().registryOrThrow(Registries.LEVEL_STEM),worldLoader().datapackWorldgen());
@@ -433,16 +440,17 @@ public final class CustomWorld {
         level.setDefaultSpawnPos(spawnPos,level.getSharedSpawnAngle());
 
         logger().info("World {} loading done!",id.asMinimalString());
+
         if(!loading.async)postLoadProcess(loadRadius);
         else scheduler().runTask(instance(),()->{
+            pluginManager().callEvent(new WorldInitEvent(bukkitWorld));
+
             if(init&&worldProperties.bonusChest){
                 level.registryAccess().registry(Registries.CONFIGURED_FEATURE).flatMap((registry)->registry.getHolder(MiscOverworldFeatures.BONUS_CHEST))
                     .ifPresent(holder->holder.value()
                         .place(level, level.chunkSource.getGenerator(), level.random, levelData.getSpawnPos())
                     );
             }
-
-            pluginManager().callEvent(new WorldInitEvent(bukkitWorld));
             postLoadProcess(loadRadius);
         });
     }

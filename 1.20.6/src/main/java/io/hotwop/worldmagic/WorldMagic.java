@@ -16,6 +16,7 @@ import org.bukkit.event.world.WorldUnloadEvent;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitScheduler;
+import org.jetbrains.annotations.Nullable;
 import org.spongepowered.configurate.CommentedConfigurationNode;
 import org.spongepowered.configurate.ConfigurateException;
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
@@ -76,11 +77,17 @@ public final class WorldMagic extends JavaPlugin {
     }
 
     private static final Map<NamespacedKey,WorldFile> worldFiles=new HashMap<>();
-    public static WorldFile getWorldFile(NamespacedKey id){
+    public static @Nullable WorldFile getWorldFile(NamespacedKey id){
         return worldFiles.get(id);
     }
 
     private static final List<CustomWorld> worlds=new ArrayList<>();
+    public static @Nullable CustomWorld getPluginWorld(NamespacedKey id){
+        return worlds.stream().filter(wr->wr.id.equals(id)).findAny().orElse(null);
+    }
+    public static List<CustomWorld> getPluginWorlds(){
+        return List.copyOf(worlds);
+    }
 
     @Override
     public void onLoad(){
