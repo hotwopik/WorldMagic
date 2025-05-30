@@ -11,3 +11,10 @@ api-version: '1.20.6'
 permissions:
   worldmagic.command:
     description: WorldMagic command permission
+    children:
+      - worldmagic.command.world
+      - worldmagic.command.create
+  worldmagic.command.world:
+    description: Command to manage worlds
+  worldmagic.command.create:
+    description: Command to create worlds from prototypes

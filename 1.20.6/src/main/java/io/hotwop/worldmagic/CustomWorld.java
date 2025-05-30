@@ -1,9 +1,11 @@
-package io.hotwop.worldmagic.generation;
+package io.hotwop.worldmagic;
 
 import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.Lifecycle;
-import io.hotwop.worldmagic.WorldMagic;
 import io.hotwop.worldmagic.file.WorldFile;
+import io.hotwop.worldmagic.generation.Dimension;
+import io.hotwop.worldmagic.generation.GameRuleFactory;
+import io.hotwop.worldmagic.generation.GeneratorSettings;
 import io.hotwop.worldmagic.util.ImmutableLocation;
 import io.hotwop.worldmagic.util.Util;
 import it.unimi.dsi.fastutil.longs.LongIterator;
@@ -28,6 +30,7 @@ import net.minecraft.world.entity.ai.village.VillageSiege;
 import net.minecraft.world.entity.npc.CatSpawner;
 import net.minecraft.world.entity.npc.WanderingTraderSpawner;
 import net.minecraft.world.level.*;
+import net.minecraft.world.level.biome.BiomeManager;
 import net.minecraft.world.level.border.WorldBorder;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.dimension.LevelStem;
@@ -100,9 +103,10 @@ public final class CustomWorld {
     public final Location callbackLocation;
     public final AllowSettings allowSettings;
     public final GameRuleFactory gamerules;
+    public final WorldBorderSettings border;
 
     public record WorldProperties(
-        long seed,
+        Long seed,
         boolean generateStructures,
         boolean bonusChest,
         GameType defaultGamemode,
@@ -149,6 +153,42 @@ public final class CustomWorld {
         }
     }
 
+    public record WorldBorderSettings(
+        boolean override,
+        double size,
+        double safeZone,
+        double damagePerBlock,
+        Center center,
+        Warning warning
+    ){
+        public WorldBorderSettings(WorldFile.WorldBorderSettings file){
+            this(file.override,file.size,file.safeZone,file.damagePerBlock,new Center(file.center.x,file.center.z),new Warning(file.warning.distance,file.warning.time));
+        }
+
+        public record Center(
+            double x,
+            double z
+        ){}
+
+        public record Warning(
+            int distance,
+            int time
+        ){}
+
+        public WorldBorder.Settings build(){
+            WorldBorder handle=new WorldBorder();
+
+            handle.setSize(size);
+            handle.setDamageSafeZone(safeZone);
+            handle.setDamagePerBlock(damagePerBlock);
+            handle.setCenter(center.x,center.z);
+            handle.setWarningBlocks(warning.distance);
+            handle.setWarningTime(warning.time);
+
+            return handle.createSettings();
+        }
+    }
+
     public final Path folderPath;
     public final ResourceLocation vanillaLocId;
     public final ResourceKey<LevelStem> vanillaId;
@@ -173,17 +213,21 @@ public final class CustomWorld {
         return level;
     }
 
-    public CustomWorld(WorldFile file){
-        id=file.id;
+    protected CustomWorld(WorldFile file){
+        this(file.id,file.bukkitId,file.folder,file);
+    }
+
+    protected CustomWorld(NamespacedKey id,String bukkitId,String folder,WorldFile file){
+        this.id=id;
 
         vanillaLocId=new ResourceLocation(id.namespace(),id.value());
         vanillaId=ResourceKey.create(Registries.LEVEL_STEM,vanillaLocId);
         vanillaLevelId=ResourceKey.create(Registries.DIMENSION,vanillaLocId);
 
-        bukkitId=file.bukkitId==null?(id.namespace().equals(NamespacedKey.MINECRAFT)?id.value():id.namespace()+"_"+id.value()):file.bukkitId;
+        this.bukkitId=bukkitId==null?(id.namespace().equals(NamespacedKey.MINECRAFT)?id.value():id.namespace()+"_"+id.value()):bukkitId;
 
-        folder=file.folder;
-        folderPath=Bukkit.getWorldContainer().toPath().resolve(folder==null?bukkitId:folder);
+        this.folder=folder==null?this.bukkitId:folder;
+        folderPath=Bukkit.getWorldContainer().toPath().resolve(this.folder);
 
         worldProperties=new WorldProperties(file.worldProperties);
         dimension=file.dimension;
@@ -192,6 +236,7 @@ public final class CustomWorld {
         callbackLocation=file.callbackLocation==null?null:new ImmutableLocation(file.callbackLocation);
         allowSettings=new AllowSettings(file.allowSettings);
         gamerules=file.gamerules;
+        border=new WorldBorderSettings(file.border);
 
         if(dimension instanceof Dimension.Reference ref)dimensionId=ref.getKey();
         else dimensionId=vanillaId;
@@ -336,6 +381,8 @@ public final class CustomWorld {
             specialProperty=specialWorldProperty(generator);
             levelData=getPrimaryLevelData(dimensionRegistry,specialProperty);
 
+            if(border.override)levelData.setWorldBorder(border.build());
+
             if(save!=null){
                 LevelDataAndDimensions saveData=LevelStorageSource.getLevelDataAndDimensions(save,worldLoader().dataConfiguration(),WorldMagic.vanillaServer().registryAccess().registryOrThrow(Registries.LEVEL_STEM),worldLoader().datapackWorldgen());
                 PrimaryLevelData oldLevelData=(PrimaryLevelData)saveData.worldData();
@@ -351,7 +398,8 @@ public final class CustomWorld {
                 levelData.setThundering(oldLevelData.isThundering());
                 levelData.setInitialized(oldLevelData.isInitialized());
 
-                if(!gamerules.override)levelData.getGameRules().assignFrom(oldLevelData.getGameRules(),null);
+                if(gamerules==null||!gamerules.override)levelData.getGameRules().assignFrom(oldLevelData.getGameRules(),null);
+                if(!border.override)levelData.setWorldBorder(oldLevelData.getWorldBorder());
             }
         }else{
             LevelDataAndDimensions saveData=LevelStorageSource.getLevelDataAndDimensions(save,worldLoader().dataConfiguration(),WorldMagic.vanillaServer().registryAccess().registryOrThrow(Registries.LEVEL_STEM),worldLoader().datapackWorldgen());
@@ -361,6 +409,7 @@ public final class CustomWorld {
             specialProperty=saveData.dimensions().specialWorldProperty();
 
             if(gamerules!=null&&gamerules.override)levelData.getGameRules().assignFrom(gamerules.gameRules,null);
+            if(border.override)levelData.setWorldBorder(border.build());
         }
 
         levelData.customDimensions=dimensionRegistry;
@@ -383,7 +432,7 @@ public final class CustomWorld {
             stem,
             loadListener,
             specialProperty==PrimaryLevelData.SpecialWorldProperty.DEBUG,
-            worldProperties.seed,
+            BiomeManager.obfuscateSeed(levelData.worldGenOptions().seed()),
             List.of(new PhantomSpawner(),new PatrolSpawner(),new CatSpawner(),new VillageSiege(),new WanderingTraderSpawner(levelData)),
             true,
             vanillaServer().overworld().getRandomSequences(),
@@ -443,6 +492,9 @@ public final class CustomWorld {
 
         if(!loading.async)postLoadProcess(loadRadius);
         else scheduler().runTask(instance(),()->{
+            WorldBorder worldBorder=level.getWorldBorder();
+            worldBorder.applySettings(levelData.getWorldBorder());
+
             pluginManager().callEvent(new WorldInitEvent(bukkitWorld));
 
             if(init&&worldProperties.bonusChest){
@@ -538,7 +590,7 @@ public final class CustomWorld {
     private @NotNull PrimaryLevelData getPrimaryLevelData(Registry<LevelStem> dimensionRegistry, PrimaryLevelData.SpecialWorldProperty specialProperty) {
         WorldDimensions.Complete dimensionsOp=new WorldDimensions.Complete(dimensionRegistry,specialProperty);
 
-        WorldOptions worldOptions=new WorldOptions(worldProperties.seed,worldProperties.generateStructures,worldProperties.bonusChest);
+        WorldOptions worldOptions=new WorldOptions(worldProperties.seed==null?WorldOptions.randomSeed():worldProperties.seed,worldProperties.generateStructures,worldProperties.bonusChest);
         LevelSettings levelSettings=new LevelSettings(bukkitId,worldProperties.defaultGamemode,Bukkit.isHardcore(),worldProperties.difficulty,false,gamerules==null?new GameRules():gamerules.gameRules,worldLoader().dataConfiguration());
 
         return new PrimaryLevelData(levelSettings,worldOptions,dimensionsOp.specialWorldProperty(),Lifecycle.experimental());

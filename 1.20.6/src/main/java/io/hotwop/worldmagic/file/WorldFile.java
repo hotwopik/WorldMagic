@@ -48,11 +48,13 @@ public final class WorldFile{
 
     public String folder;
 
+    public boolean prototype=false;
+
     public WorldProperties worldProperties;
 
     @ConfigSerializable
     public static final class WorldProperties{
-        public long seed=0;
+        public Long seed;
 
         public boolean generateStructures=true;
 
@@ -109,4 +111,31 @@ public final class WorldFile{
     }
 
     public GameRuleFactory gamerules;
+
+    public WorldBorderSettings border;
+
+    @ConfigSerializable
+    public static final class WorldBorderSettings{
+        public boolean override=false;
+
+        public double size=60000000;
+        public double safeZone=5;
+        public double damagePerBlock=0.2;
+
+        public Center center=new Center();
+
+        @ConfigSerializable
+        public static final class Center{
+            public double x=0;
+            public double z=0;
+        }
+
+        public Warning warning=new Warning();
+
+        @ConfigSerializable
+        public static final class Warning{
+            public int distance=5;
+            public int time=300;
+        }
+    }
 }

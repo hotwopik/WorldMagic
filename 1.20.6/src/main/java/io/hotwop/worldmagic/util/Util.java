@@ -19,6 +19,7 @@ import org.bukkit.Difficulty;
 import org.bukkit.GameMode;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
+import org.bukkit.command.CommandSender;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Field;
@@ -268,5 +269,12 @@ public final class Util{
         if(dimensionType.is(BuiltinDimensionTypes.NETHER))return World.Environment.NETHER;
         if(dimensionType.is(BuiltinDimensionTypes.END))return World.Environment.THE_END;
         return World.Environment.CUSTOM;
+    }
+
+    public static boolean hasOneOfPermission(CommandSender sender, String[] permissions){
+        for(String permission:permissions){
+            if(sender.hasPermission(permission))return true;
+        }
+        return false;
     }
 }

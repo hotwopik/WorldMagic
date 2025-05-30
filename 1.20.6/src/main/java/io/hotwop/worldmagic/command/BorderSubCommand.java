@@ -8,7 +8,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import io.hotwop.worldmagic.WorldMagicBootstrap;
-import io.hotwop.worldmagic.generation.CustomWorld;
+import io.hotwop.worldmagic.CustomWorld;
 import io.papermc.paper.adventure.PaperAdventure;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
@@ -42,7 +42,7 @@ public final class BorderSubCommand{
             ))
             .then(Commands.literal("center").then(Commands.argument("x",DoubleArgumentType.doubleArg()).then(Commands.argument("z",DoubleArgumentType.doubleArg())
                 .executes(ctx->{
-                    CustomWorld world= WorldMagicBootstrap.getWorld(ctx);
+                    CustomWorld world=ctx.getArgument("world", CustomWorld.class);
                     if(!world.loaded())throw WorldMagicBootstrap.worldNotLoaded.create(world.id.asString());
 
                     double x=ctx.getArgument("x",Double.class);
@@ -60,7 +60,7 @@ public final class BorderSubCommand{
             .then(Commands.literal("damage")
                 .then(Commands.literal("amount").then(Commands.argument("value",DoubleArgumentType.doubleArg(0))
                     .executes(ctx->{
-                        CustomWorld world= WorldMagicBootstrap.getWorld(ctx);
+                        CustomWorld world=ctx.getArgument("world", CustomWorld.class);
                         if(!world.loaded())throw WorldMagicBootstrap.worldNotLoaded.create(world.id.asString());
 
                         double value=ctx.getArgument("value",Double.class);
@@ -74,7 +74,7 @@ public final class BorderSubCommand{
                 ))
                 .then(Commands.literal("buffer").then(Commands.argument("distance",DoubleArgumentType.doubleArg(0))
                     .executes(ctx->{
-                        CustomWorld world= WorldMagicBootstrap.getWorld(ctx);
+                        CustomWorld world=ctx.getArgument("world", CustomWorld.class);
                         if(!world.loaded())throw WorldMagicBootstrap.worldNotLoaded.create(world.id.asString());
 
                         double distance=ctx.getArgument("distance",Double.class);
@@ -90,7 +90,7 @@ public final class BorderSubCommand{
             .then(Commands.literal("warning")
                 .then(Commands.literal("distance").then(Commands.argument("value", IntegerArgumentType.integer(0)))
                     .executes(ctx->{
-                        CustomWorld world= WorldMagicBootstrap.getWorld(ctx);
+                        CustomWorld world=ctx.getArgument("world", CustomWorld.class);
                         if(!world.loaded())throw WorldMagicBootstrap.worldNotLoaded.create(world.id.asString());
 
                         int value=ctx.getArgument("value",Integer.class);
@@ -104,7 +104,7 @@ public final class BorderSubCommand{
                 )
                 .then(Commands.literal("time").then(Commands.argument("value", IntegerArgumentType.integer(0)))
                     .executes(ctx->{
-                        CustomWorld world= WorldMagicBootstrap.getWorld(ctx);
+                        CustomWorld world=ctx.getArgument("world", CustomWorld.class);
                         if(!world.loaded())throw WorldMagicBootstrap.worldNotLoaded.create(world.id.asString());
 
                         int value=ctx.getArgument("value",Integer.class);
@@ -121,7 +121,7 @@ public final class BorderSubCommand{
     }
 
     private static int changeSize(CommandContext<CommandSourceStack> ctx, Function<Double,Double> getEnd, Function<Long,Long> getTime) throws CommandSyntaxException {
-        CustomWorld world= WorldMagicBootstrap.getWorld(ctx);
+        CustomWorld world=ctx.getArgument("world", CustomWorld.class);
         if(!world.loaded())throw WorldMagicBootstrap.worldNotLoaded.create(world.id.asString());
 
         WorldBorder border=world.level().getWorldBorder();
