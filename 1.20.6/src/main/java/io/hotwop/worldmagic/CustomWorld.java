@@ -201,6 +201,8 @@ public final class CustomWorld {
         return loaded;
     }
 
+    private boolean forDeletion=false;
+
     private World bukkitWorld=null;
     private ServerLevel level=null;
 
@@ -248,6 +250,8 @@ public final class CustomWorld {
         if(shutdown)return;
 
         if(loaded)throw new RuntimeException("World already loaded!");
+        if(forDeletion)throw new RuntimeException("World for deletion!");
+
         loaded=true;
 
         if(loading.async)threadManager.execute(this::loadProcess);
@@ -280,6 +284,14 @@ public final class CustomWorld {
                 if(task.addAndGet(-1)==0)unloadProcess();
             }));
         }
+    }
+
+    protected void forDeletion(){
+        forDeletion=true;
+    }
+
+    public boolean isForDeletion(){
+        return forDeletion;
     }
 
     @SuppressWarnings("deprecation")
@@ -455,14 +467,14 @@ public final class CustomWorld {
             pluginManager().callEvent(new WorldInitEvent(bukkitWorld));
         }
 
-        if(spawnPosition!=null&&spawnPosition.override)setSpawn(level,levelData);
+        if(spawnPosition!=null&&spawnPosition.override)setSpawn(levelData);
 
         boolean init;
         if(!levelData.isInitialized()){
             init=true;
 
             if(spawnPosition!=null){
-                if(!spawnPosition.override)setSpawn(level,levelData);
+                if(!spawnPosition.override)setSpawn(levelData);
             }else{
                 try{
                     vanillaSetSpawn.invoke(null,level,levelData,false,level.isDebug());
@@ -581,7 +593,7 @@ public final class CustomWorld {
         }
     }
 
-    private void setSpawn(ServerLevel level,PrimaryLevelData levelData){
+    private void setSpawn(PrimaryLevelData levelData){
         BlockPos spawnPos=new BlockPos(spawnPosition.x,spawnPosition.y,spawnPosition.z);
         levelData.setSpawn(spawnPos,spawnPosition.yaw);
     }

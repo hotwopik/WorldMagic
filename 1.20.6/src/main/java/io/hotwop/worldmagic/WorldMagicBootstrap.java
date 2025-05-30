@@ -25,6 +25,10 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.level.GameRules;
 import org.bukkit.*;
+import org.bukkit.command.BlockCommandSender;
+import org.bukkit.command.CommandSender;
+import org.bukkit.command.ConsoleCommandSender;
+import org.bukkit.entity.Player;
 import org.bukkit.event.world.TimeSkipEvent;
 import org.jetbrains.annotations.NotNull;
 
@@ -59,7 +63,8 @@ public final class WorldMagicBootstrap implements PluginBootstrap{
     private static final String[] globalPermissionSet={
         "worldmagic.command",
         "worldmagic.command.world",
-        "worldmagic.command.create"
+        "worldmagic.command.create",
+        "worldmagic.command.reload"
     };
     private static final String[] worldPermissionSet={
         "worldmagic.command",
@@ -68,6 +73,10 @@ public final class WorldMagicBootstrap implements PluginBootstrap{
     private static final String[] createPermissionSet={
         "worldmagic.command",
         "worldmagic.command.create"
+    };
+    private static final String[] reloadPermissionSet={
+        "worldmagic.command",
+        "worldmagic.command.reload"
     };
 
     private LiteralCommandNode<CommandSourceStack> buildCommand(){
@@ -267,6 +276,7 @@ public final class WorldMagicBootstrap implements PluginBootstrap{
                         )
                     ))
                     .then(MoveSubCommand.buildNode())
+                    .then(DeleteSubCommand.buildNode())
                 )
             )
             .then(Commands.literal("create")
@@ -321,6 +331,7 @@ public final class WorldMagicBootstrap implements PluginBootstrap{
                 ))
             )
             .then(Commands.literal("reload")
+                .requires(ctx->Util.hasOneOfPermission(ctx.getSender(),reloadPermissionSet))
                 .executes(ctx->{
                     ctx.getSource().getSender().sendMessage("Reloading world files...");
 

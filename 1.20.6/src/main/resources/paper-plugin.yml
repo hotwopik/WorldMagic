@@ -14,7 +14,10 @@ permissions:
     children:
       - worldmagic.command.world
       - worldmagic.command.create
+      - worldmagic.command.reload
   worldmagic.command.world:
     description: Command to manage worlds
   worldmagic.command.create:
-    description: Command to create worlds from prototypes
+    description: Command to create worlds from world files
+  worldmagic.command.reload:
+    description: Command to reload world files

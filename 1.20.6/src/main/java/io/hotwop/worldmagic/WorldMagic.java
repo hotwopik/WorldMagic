@@ -287,6 +287,18 @@ public final class WorldMagic extends JavaPlugin {
         }
     }
 
+    public static void deleteWorld(NamespacedKey id){
+        CustomWorld world=worlds.stream()
+            .filter(cw->cw.id.equals(id)).findAny().orElse(null);
+        if(world==null)throw new RuntimeException("No world: "+id.asString());
+
+        logger.info("Deleting world {}",id.asString());
+        world.forDeletion();
+
+        if(world.loaded())world.unload();
+        else worlds.remove(world);
+    }
+
     public static final class EventListener implements Listener {
         private EventListener(){}
 
@@ -294,14 +306,18 @@ public final class WorldMagic extends JavaPlugin {
         public void worldUnload(WorldUnloadEvent e){
             World world=e.getWorld();
 
-            for(CustomWorld wr:worlds){
-                if(wr.loaded()&&wr.world().equals(world)){
+            worlds.stream()
+                .filter(cw->cw.isForDeletion()&&cw.id.equals(world.getKey())).findAny()
+                .ifPresent(worlds::remove);
+
+            worlds.stream()
+                .filter(cw->cw.loaded()&&cw.id.equals(world.getKey())).findAny()
+                .ifPresent(cw->{
                     logger.info("Redirecting unload to WorldMagic...");
                     e.setCancelled(true);
-                    wr.unload();
-                    break;
-                }
-            }
+
+                    cw.unload();
+                });
         }
     }
 }
