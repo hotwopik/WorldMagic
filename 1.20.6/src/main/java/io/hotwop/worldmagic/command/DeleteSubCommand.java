@@ -34,7 +34,10 @@ public final class DeleteSubCommand{
                             .append(Component
                                 .text("[Yes]",NamedTextColor.GREEN)
                                 .clickEvent(ClickEvent.callback(
-                                    aud->WorldMagic.deleteWorld(world.id),
+                                    aud->{
+                                        aud.sendMessage(Component.text("Deleting world..."));
+                                        WorldMagic.deleteWorld(world.id);
+                                    },
                                     bl->bl
                                         .uses(1)
                                         .lifetime(Duration.ofSeconds(5))
