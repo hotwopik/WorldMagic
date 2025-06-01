@@ -33,7 +33,7 @@ public sealed interface Dimension permits Dimension.Reference,Dimension.Inline{
         NamespacedKey id
     ) implements Dimension{
         public ResourceKey<LevelStem> getKey(){
-            return ResourceKey.create(Registries.LEVEL_STEM,new ResourceLocation(id.namespace(),id.value()));
+            return ResourceKey.create(Registries.LEVEL_STEM, Util.createResourceLocation(id));
         }
         public LevelStem get() {
             return Util.registryGet(Registries.LEVEL_STEM,WorldMagic.vanillaServer().registryAccess(),id);
@@ -48,20 +48,21 @@ public sealed interface Dimension permits Dimension.Reference,Dimension.Inline{
         public static final FlatLevelSource emptyGenerator;
 
         static{
-            Registry<Biome> biomeRegistry=WorldMagic.vanillaServer().registryAccess().registryOrThrow(Registries.BIOME);
+            Registry<Biome> biomeRegistry= Util.getRegistry(Registries.BIOME);
+
             emptyGenerator=new FlatLevelSource(new FlatLevelGeneratorSettings(
                 Optional.empty(),
-                Holder.Reference.createStandAlone(biomeRegistry.holderOwner(),Biomes.THE_VOID),
+                Holder.Reference.createStandAlone(Util.getHolderOwner(biomeRegistry),Biomes.THE_VOID),
                 List.of()
             ));
         }
 
         public LevelStem get(){
-            Registry<DimensionType> type=WorldMagic.vanillaServer().registryAccess().registryOrThrow(Registries.DIMENSION_TYPE);
-            return new LevelStem(type.getHolderOrThrow(ResourceKey.create(Registries.DIMENSION_TYPE,new ResourceLocation(dimensionType.namespace(),dimensionType.value()))),(generator instanceof GeneratorSettings.Vanilla(ChunkGenerator generatorVan))?generatorVan:emptyGenerator);
+            Registry<DimensionType> type= Util.getRegistry(Registries.DIMENSION_TYPE);
+            return new LevelStem(Util.getHolderOrThrow(type,ResourceKey.create(Registries.DIMENSION_TYPE, Util.createResourceLocation(dimensionType))),(generator instanceof GeneratorSettings.Vanilla(ChunkGenerator generatorVan))?generatorVan:emptyGenerator);
         }
         public ResourceKey<LevelStem> getKey() {
-            Registry<LevelStem> reg=WorldMagic.vanillaServer().registryAccess().registryOrThrow(Registries.LEVEL_STEM);
+            Registry<LevelStem> reg= Util.getRegistry(Registries.LEVEL_STEM);
             ResourceLocation loc=reg.getKey(get());
             if(loc==null)return null;
             return ResourceKey.create(Registries.LEVEL_STEM,loc);
@@ -80,7 +81,7 @@ public sealed interface Dimension permits Dimension.Reference,Dimension.Inline{
                 if(dimensionNode.virtual())throw new SerializationException(node,Dimension.class,"Missing dimension-type node");
                 if(generatorNode.virtual())throw new SerializationException(node,Dimension.class,"Missing generator node");
 
-                ConfigurationNode pluginBiomeNode=node.node("plugin-biome-provider");
+                ConfigurationNode pluginBiomeNode=node.node("plugin-biomes");
 
                 NamespacedKey dimension=dimensionNode.require(NamespacedKey.class);
                 GeneratorSettings settings=generatorNode.require(GeneratorSettings.class);
@@ -98,13 +99,12 @@ public sealed interface Dimension permits Dimension.Reference,Dimension.Inline{
         public void serialize(@NotNull Type type, @Nullable Dimension obj, @NotNull ConfigurationNode node) throws SerializationException {
             switch (obj) {
                 case null -> {
-                    return;
                 }
                 case Reference(NamespacedKey id) -> node.set(id);
                 case Inline(NamespacedKey dimensionType, GeneratorSettings generator, String pluginGenerator) -> {
                     node.node("dimension-type").set(dimensionType);
                     node.node("generator").set(generator);
-                    if(pluginGenerator!=null)node.node("plugin-biome-provider").set(pluginGenerator);
+                    if(pluginGenerator!=null)node.node("plugin-biomes").set(pluginGenerator);
                 }
                 default -> throw new SerializationException();
             }

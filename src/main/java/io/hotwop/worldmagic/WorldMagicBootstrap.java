@@ -20,15 +20,12 @@ import io.papermc.paper.plugin.bootstrap.PluginBootstrap;
 import io.papermc.paper.plugin.lifecycle.event.LifecycleEventManager;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger;
+import net.minecraft.SharedConstants;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.level.GameRules;
 import org.bukkit.*;
-import org.bukkit.command.BlockCommandSender;
-import org.bukkit.command.CommandSender;
-import org.bukkit.command.ConsoleCommandSender;
-import org.bukkit.entity.Player;
 import org.bukkit.event.world.TimeSkipEvent;
 import org.jetbrains.annotations.NotNull;
 
@@ -42,6 +39,16 @@ public final class WorldMagicBootstrap implements PluginBootstrap{
 
     public void bootstrap(@NotNull BootstrapContext ctx) {
         logger=ctx.getLogger();
+
+        if(SharedConstants.getCurrentVersion().getDataVersion().getVersion()<3839){
+            throw new RuntimeException("Versions under 1.20.6 are unsupported");
+        }
+
+        try{
+            WorldMagicBootstrap.class.getClassLoader().loadClass(Util.class.getName());
+        }catch(ClassNotFoundException e){
+            throw new RuntimeException(e);
+        }
 
         LifecycleEventManager<BootstrapContext> manager=ctx.getLifecycleManager();
         manager.registerEventHandler(LifecycleEvents.COMMANDS,e->{

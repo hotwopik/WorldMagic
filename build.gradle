@@ -1,0 +1,75 @@
+plugins {
+    id("java")
+    id("xyz.jpenilla.run-paper") version "2.3.1"
+    id("io.papermc.paperweight.userdev") version "2.0.0-SNAPSHOT"
+}
+
+group="io.hotwop"
+version="1.0"
+
+repositories {
+    mavenCentral()
+    maven {
+        name = "papermc-repo"
+        url = "https://repo.papermc.io/repository/maven-public/"
+    }
+}
+
+dependencies {
+    paperweight.paperDevBundle("1.21.5-R0.1-SNAPSHOT")
+
+    implementation(project(":api"))
+
+    implementation 'org.spongepowered:configurate-yaml:4.2.0'
+}
+
+["1.21","1.21.1","1.21.3","1.21.4","1.21.5"].each {vers->
+    tasks.register("runServer$vers"){
+        group("run paper")
+        dependsOn(runServer{
+            runDirectory(file("run/$vers"))
+            minecraftVersion(vers)
+        })
+    }
+}
+
+tasks {
+    runServer{
+        runDirectory(file("run/1.20.6"))
+        minecraftVersion("1.20.6")
+    }
+    jar{
+        dependsOn(project(":api").getTasksByName("assemble",false))
+        from(zipTree(file('api/build/libs/api.jar')))
+    }
+    assemble{
+        dependsOn(reobfJar)
+    }
+}
+
+def targetJavaVersion = 21
+java {
+    def javaVersion = JavaVersion.toVersion(targetJavaVersion)
+    sourceCompatibility = javaVersion
+    targetCompatibility = javaVersion
+    if (JavaVersion.current() < javaVersion) {
+        toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+
+    if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
+        options.release.set(targetJavaVersion)
+    }
+}
+
+processResources {
+    def props = [version: version]
+    inputs.properties props
+    filteringCharset 'UTF-8'
+    filesMatching('paper-plugin.yml') {
+        expand props
+    }
+}

@@ -88,7 +88,7 @@ public final class BorderSubCommand{
                 ))
             )
             .then(Commands.literal("warning")
-                .then(Commands.literal("distance").then(Commands.argument("value", IntegerArgumentType.integer(0)))
+                .then(Commands.literal("distance").then(Commands.argument("value", IntegerArgumentType.integer(0))
                     .executes(ctx->{
                         CustomWorld world=ctx.getArgument("world", CustomWorld.class);
                         if(!world.loaded())throw WorldMagicBootstrap.worldNotLoaded.create(world.id.asString());
@@ -101,8 +101,8 @@ public final class BorderSubCommand{
                         ctx.getSource().getSender().sendMessage(PaperAdventure.asAdventure(Component.translatable("commands.worldborder.warning.distance.success", value)));
                         return 1;
                     })
-                )
-                .then(Commands.literal("time").then(Commands.argument("value", IntegerArgumentType.integer(0)))
+                ))
+                .then(Commands.literal("time").then(Commands.argument("value", IntegerArgumentType.integer(0))
                     .executes(ctx->{
                         CustomWorld world=ctx.getArgument("world", CustomWorld.class);
                         if(!world.loaded())throw WorldMagicBootstrap.worldNotLoaded.create(world.id.asString());
@@ -115,7 +115,7 @@ public final class BorderSubCommand{
                         ctx.getSource().getSender().sendMessage(PaperAdventure.asAdventure(Component.translatable("commands.worldborder.warning.time.success", value)));
                         return 1;
                     })
-                )
+                ))
             )
             .build();
     }

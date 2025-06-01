@@ -43,7 +43,7 @@ public sealed interface GeneratorSettings permits GeneratorSettings.Vanilla,Gene
     record Vanilla(ChunkGenerator generator) implements GeneratorSettings {
         public DedicatedServerProperties.WorldDimensionData create(){
             if(generator instanceof FlatLevelSource fl){
-                JsonObject obj=(JsonObject)FlatLevelGeneratorSettings.CODEC.encode(fl.settings(),JsonOps.INSTANCE,new JsonObject()).getOrThrow();
+                JsonObject obj=(JsonObject)FlatLevelGeneratorSettings.CODEC.encode(fl.settings(),WorldMagic.vanillaServer().registryAccess().createSerializationContext(JsonOps.INSTANCE),new JsonObject()).getOrThrow();
                 return new DedicatedServerProperties.WorldDimensionData(obj,"flat");
             }
             return new DedicatedServerProperties.WorldDimensionData(new JsonObject(),"normal");

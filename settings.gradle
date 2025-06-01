@@ -1,2 +1,14 @@
-rootProject.name = 'WorldMagic'
-include '1.20.6'
+pluginManagement{
+    repositories{
+        mavenCentral()
+        gradlePluginPortal()
+        maven {
+            name = "papermc-repo"
+            url = "https://repo.papermc.io/repository/maven-public/"
+        }
+    }
+}
+
+rootProject.name='WorldMagic'
+
+include(":api")

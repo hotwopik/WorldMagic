@@ -11,7 +11,6 @@ import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.levelgen.DensityFunction;
@@ -212,7 +211,7 @@ public final class WorldGenProcessor{
 
             Map<ResourceKey<T>,T> vanillaMap=new HashMap<>();
             map.forEach((id,val)->vanillaMap
-                .put(ResourceKey.create(registry,new ResourceLocation(id.namespace(),id.value())),val)
+                .put(ResourceKey.create(registry, Util.createResourceLocation(id)),val)
             );
 
             Util.registerIgnoreFreezeAll(registry,access,vanillaMap,Lifecycle.experimental());
@@ -316,7 +315,7 @@ public final class WorldGenProcessor{
 
         Map<ResourceKey<DimensionType>,DimensionType> vanillaDimensionTypes=new HashMap<>();
         dimensionTypes.forEach((id,type)->vanillaDimensionTypes
-            .put(ResourceKey.create(Registries.DIMENSION_TYPE,new ResourceLocation(id.namespace(),id.value())),type)
+            .put(ResourceKey.create(Registries.DIMENSION_TYPE, Util.createResourceLocation(id)),type)
         );
 
         Util.registerIgnoreFreezeAll(Registries.DIMENSION_TYPE,access,vanillaDimensionTypes, Lifecycle.experimental());

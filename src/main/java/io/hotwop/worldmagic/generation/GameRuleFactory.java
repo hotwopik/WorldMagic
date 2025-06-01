@@ -1,7 +1,6 @@
 package io.hotwop.worldmagic.generation;
 
-import com.mojang.serialization.Dynamic;
-import com.mojang.serialization.DynamicLike;
+import io.hotwop.worldmagic.util.Util;
 import io.hotwop.worldmagic.util.dfu.ConfigurateOps;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.world.level.GameRules;
@@ -17,8 +16,8 @@ public final class GameRuleFactory{
     public final GameRules gameRules;
     public final boolean override;
 
-    public GameRuleFactory(boolean override,DynamicLike<?> gameRuleTag){
-        this.gameRules=new GameRules(gameRuleTag);
+    public GameRuleFactory(boolean override,GameRules rules){
+        this.gameRules=rules;
         this.override=override;
     }
 
@@ -29,7 +28,21 @@ public final class GameRuleFactory{
         public GameRuleFactory deserialize(@NotNull Type type, @NotNull ConfigurationNode node) throws SerializationException {
             boolean override=node.node("override").getBoolean();
 
-            return new GameRuleFactory(override,new Dynamic<>(ConfigurateOps.instance(),node));
+            GameRules rules=Util.createGameRules();
+            Util.visitGameRules(rules, new GameRules.GameRuleTypeVisitor() {
+                @Override
+                public void visitBoolean(GameRules.Key<GameRules.BooleanValue> key, GameRules.Type<GameRules.BooleanValue> type) {
+                    ConfigurationNode subNode=node.node(key.getId());
+                    if(!subNode.virtual())rules.getRule(key).set(subNode.getBoolean(),null);
+                }
+                @Override
+                public void visitInteger(GameRules.Key<GameRules.IntegerValue> key, GameRules.Type<GameRules.IntegerValue> type) {
+                    ConfigurationNode subNode=node.node(key.getId());
+                    if(!subNode.virtual())rules.getRule(key).set(subNode.getInt(),null);
+                }
+            });
+
+            return new GameRuleFactory(override,rules);
         }
 
         public void serialize(@NotNull Type type, @Nullable GameRuleFactory obj, @NotNull ConfigurationNode node) throws SerializationException {
