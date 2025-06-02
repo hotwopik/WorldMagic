@@ -69,46 +69,91 @@ public final class CustomWorldSettings{
     }
 
     private AllowSettings allowSettings=null;
+
+    /**
+     * Set what allowed in the world
+     * @param allowSettings settings
+     */
     public void setAllowSettings(AllowSettings allowSettings){
         Objects.requireNonNull(allowSettings,"allowSettings");
         this.allowSettings=allowSettings;
     }
+
+    /**
+     * @return What allowed in the world
+     */
     public @Nullable AllowSettings allowSettings(){
         return allowSettings;
     }
 
     private Loading loading=null;
+
+    /**
+     * Set world loading settings
+     * @param loading settings
+     */
     public void setLoadingSettings(Loading loading){
         Objects.requireNonNull(loading,"loading");
         this.loading=loading;
     }
+
+    /**
+     * @return Loading settings
+     */
     public @Nullable Loading loadingSettings(){
         return loading;
     }
 
     private WorldProperties worldProperties=null;
+
+    /**
+     * Set some world properties
+     * @param properties world properties
+     */
     public void setWorldProperties(WorldProperties properties){
         Objects.requireNonNull(properties,"properties");
         this.worldProperties=properties;
     }
+
+    /**
+     * @return world properties
+     */
     public @Nullable WorldProperties worldProperties(){
         return worldProperties;
     }
 
     private WorldBorderSettings border=null;
+
+    /**
+     * Setup world border
+     * @param border world border settings
+     */
     public void setWorldBorderSettings(WorldBorderSettings border){
         Objects.requireNonNull(border,"border");
         this.border=border;
     }
+
+    /**
+     * @return world border settings
+     */
     public @Nullable WorldBorderSettings worldBorderSettings(){
         return border;
     }
 
     private SpawnPosition spawn=null;
+
+    /**
+     * Setup world spawn
+     * @param spawn spawn settings
+     */
     public void setSpawn(SpawnPosition spawn){
         Objects.requireNonNull(spawn,"spawn");
         this.spawn=spawn;
     }
+
+    /**
+     * @return spawn settings
+     */
     public @Nullable SpawnPosition spawn(){
         return spawn;
     }
@@ -116,30 +161,61 @@ public final class CustomWorldSettings{
     private boolean gameRuleOverride=false;
     private final GameRuleSet gameRuleSet=new GameRuleSet();
 
+    /**
+     * World configurable gamerules
+     * @return World gamerules set
+     */
     public GameRuleSet gameRuleSet(){
         return gameRuleSet;
     }
 
+    /**
+     * Setting up should plugin override already existing gamerules in the world
+     * @param override whether should or not
+     */
     public void setGameRuleOverride(boolean override){
         gameRuleOverride=override;
     }
+
+    /**
+     * @return GameRule override setting
+     */
     public boolean isGameRuleOverride(){
         return gameRuleOverride;
     }
 
     private Location callbackLocation=null;
 
+    /**
+     * Setup location to return players if world unloads
+     * <p>Default to overworld spawn</p>
+     *
+     * @param location callback location
+     */
     @Contract(mutates="this")
     public void setCallbackLocation(Location location){throw new IncorrectImplementationException();}
+
+    /**
+     * @return callback location or null if it's overworld spawn
+     */
     public @Nullable Location callbackLocation(){
         return callbackLocation;
     }
 
     private DimensionLike dimension=DimensionLike.createFromReference(NamespacedKey.minecraft("overworld"));
+
+    /**
+     * Setup dimension settings in the world
+     * @param dimension settings
+     */
     public void setDimension(DimensionLike dimension){
         Objects.requireNonNull(dimension,"dimension");
         this.dimension=dimension;
     }
+
+    /**
+     * @return dimension settings
+     */
     public DimensionLike dimension(){
         return dimension;
     }

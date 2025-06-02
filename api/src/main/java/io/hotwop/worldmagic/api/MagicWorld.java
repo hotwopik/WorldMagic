@@ -1,16 +1,20 @@
 package io.hotwop.worldmagic.api;
 
+import io.hotwop.worldmagic.api.settings.AllowSettings;
 import io.hotwop.worldmagic.api.settings.CustomWorldSettings;
+import io.hotwop.worldmagic.api.settings.WorldProperties;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
+import javax.annotation.concurrent.ThreadSafe;
 import java.nio.file.Path;
 
 /**
  * WorldMagic world instance
  */
+@ThreadSafe
 public interface MagicWorld{
     /**
      * @return vanilla world id
@@ -45,6 +49,19 @@ public interface MagicWorld{
     boolean isForDeletion();
 
     /**
+     * @return World dimension settings
+     */
+    DimensionLike dimension();
+    /**
+     * @return world properties
+     */
+    WorldProperties worldProperties();
+    /**
+     * @return world allow settings
+     */
+    AllowSettings allowSettings();
+
+    /**
      * Create CustomWorldSettings based on this world
      *
      * @param id vanilla world id
@@ -76,8 +93,14 @@ public interface MagicWorld{
 
 
     /**
-     *
+     * Run world load process
+     * @throws WorldAlreadyLoadedException if world already loaded
      */
     void load();
+
+    /**
+     * Run world unload process
+     * @throws WorldAlreadyUnloadedException if world already unloaded
+     */
     void unload();
 }

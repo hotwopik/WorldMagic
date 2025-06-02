@@ -2,6 +2,7 @@ package io.hotwop.worldmagic;
 
 import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.Lifecycle;
+import io.hotwop.worldmagic.api.DimensionLike;
 import io.hotwop.worldmagic.api.MagicWorld;
 import io.hotwop.worldmagic.api.WorldAlreadyLoadedException;
 import io.hotwop.worldmagic.api.WorldAlreadyUnloadedException;
@@ -13,6 +14,7 @@ import io.hotwop.worldmagic.generation.GeneratorSettings;
 import io.hotwop.worldmagic.file.FileUtil;
 import io.hotwop.worldmagic.util.ImmutableLocation;
 import io.hotwop.worldmagic.util.VersionUtil;
+import io.papermc.paper.FeatureHooks;
 import net.minecraft.core.*;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
@@ -137,6 +139,15 @@ public final class CustomWorld implements MagicWorld {
     }
     public Path folderPath(){
         return folderPath;
+    }
+    public DimensionLike dimension(){
+        return dimension;
+    }
+    public WorldProperties worldProperties(){
+        return worldProperties;
+    }
+    public AllowSettings allowSettings(){
+        return allowSettings;
     }
 
     public CustomWorldSettings createSettings(@NotNull NamespacedKey id){
@@ -522,14 +533,21 @@ public final class CustomWorld implements MagicWorld {
 
         if(!loading.async())postLoadProcess(loadRadius,loadListener);
         else scheduler().runTask(instance(),()->{
-            WorldBorder worldBorder=level.getWorldBorder();
-            worldBorder.applySettings(levelData.getWorldBorder());
+            try{
+                WorldBorder worldBorder=level.getWorldBorder();
+                worldBorder.applySettings(levelData.getWorldBorder());
 
-            pluginManager().callEvent(new WorldInitEvent(bukkitWorld));
+                pluginManager().callEvent(new WorldInitEvent(bukkitWorld));
 
-            if(init&&worldProperties.bonusChest()){
-                VersionUtil.getHolder(VersionUtil.getRegistry(level.registryAccess(),Registries.CONFIGURED_FEATURE),MiscOverworldFeatures.BONUS_CHEST)
-                    .value().place(level, level.chunkSource.getGenerator(), level.random, levelData.getSpawnPos());
+                if(init&&worldProperties.bonusChest()){
+                    VersionUtil.getHolder(VersionUtil.getRegistry(level.registryAccess(),Registries.CONFIGURED_FEATURE),MiscOverworldFeatures.BONUS_CHEST)
+                        .value().place(level, level.chunkSource.getGenerator(), level.random, levelData.getSpawnPos());
+                }
+            }catch(RuntimeException e){
+                loaded=false;
+                Bukkit.unloadWorld(bukkitWorld,false);
+
+                throw e;
             }
             postLoadProcess(loadRadius,loadListener);
         });
@@ -555,6 +573,8 @@ public final class CustomWorld implements MagicWorld {
             VersionUtil.computeForcedChunks(level.getDataStorage(),chunkCache);
 
             loadListener.stop();
+            if(VersionUtil.dataVersion>4082)FeatureHooks.tickEntityManager(level);
+
             pluginManager().callEvent(new WorldLoadEvent(bukkitWorld));
         }catch(RuntimeException e){
             loaded=false;
