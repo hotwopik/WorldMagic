@@ -1,5 +1,7 @@
 package io.hotwop.worldmagic;
 
+import io.hotwop.worldmagic.api.MagicWorld;
+import io.hotwop.worldmagic.api.settings.CustomWorldSettings;
 import io.hotwop.worldmagic.file.WorldFile;
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger;
 import net.minecraft.server.MinecraftServer;
@@ -74,7 +76,7 @@ public final class WorldMagic extends JavaPlugin {
         return loaded;
     }
 
-    private static final Map<NamespacedKey,WorldFile> worldFiles=new HashMap<>();
+    private static final Map<NamespacedKey, WorldFile> worldFiles=new HashMap<>();
     public static @Nullable WorldFile getWorldFile(NamespacedKey id){
         return worldFiles.get(id);
     }
@@ -89,6 +91,8 @@ public final class WorldMagic extends JavaPlugin {
     public static List<CustomWorld> getPluginWorlds(){
         return List.copyOf(worlds);
     }
+
+    private static final List<CustomWorld> startups=new ArrayList<>();
 
     @Override
     public void onLoad(){
@@ -123,31 +127,30 @@ public final class WorldMagic extends JavaPlugin {
         worldFiles.forEach((id,file)->{
             if(file.prototype)return;
 
+            CustomWorld cw;
             try{
-                worlds.add(new CustomWorld(file));
+                cw=new CustomWorld(file);
             }catch(RuntimeException e){
                 logger().info("Error to build world: {}",e.toString());
+                return;
             }
+
+            worlds.add(cw);
+            if(file.loading.startup)startups.add(cw);
         });
     }
 
     @Override
     public void onEnable(){
         logger.info("Loading worlds...");
-        worlds.forEach(wr->{
-            if(wr.loading.startup()){
-                try{
-                    wr.load();
-                }catch(RuntimeException e){
-                    World bukkit=wr.world();
-                    if(bukkit!=null){
-                        Bukkit.unloadWorld(bukkit,false);
-                    }
-
-                    logger().info("Error to load world: {}",e.toString());
-                }
+        startups.forEach(wr->{
+            try{
+                wr.load();
+            }catch(RuntimeException e){
+                logger().error("Error to load world: {}",e.toString());
             }
         });
+        startups.clear();
 
         loaded=true;
 
@@ -159,7 +162,7 @@ public final class WorldMagic extends JavaPlugin {
         Map<Path,YamlConfigurationLoader> loaders=new HashMap<>();
 
         try(Stream<Path> stream=Files.walk(worldsPath)){
-            stream.filter(pt->Files.isRegularFile(pt)&&pt.toFile().getName().endsWith(".yml")).forEach(pt->loaders.computeIfAbsent(pt,WorldFile::createLoader));
+            stream.filter(pt->Files.isRegularFile(pt)&&pt.toFile().getName().endsWith(".yml")).forEach(pt->loaders.computeIfAbsent(pt, WorldFile::createLoader));
         }catch(IOException e){
             logger.error("Error to load world files:\n {}",e.toString());
             return;
@@ -227,69 +230,90 @@ public final class WorldMagic extends JavaPlugin {
         CustomWorld.shutdownAsync();
     }
 
-    public static void createWorldFromFile(NamespacedKey id,WorldFile file) throws WorldCreationException{
+    public static void createWorldFromFile(NamespacedKey id, WorldFile file) throws WorldCreationException{
         createWorldFromFile(id,null,null,file);
     }
 
-    public static void createWorldFromFile(NamespacedKey id,@Nullable String bukkitId,WorldFile file) throws WorldCreationException{
+    public static void createWorldFromFile(NamespacedKey id, @Nullable String bukkitId, WorldFile file) throws WorldCreationException{
         createWorldFromFile(id,bukkitId,null,file);
     }
 
-    public static void createWorldFromFile(NamespacedKey id,@Nullable String bukkitId,@Nullable String folder,WorldFile file) throws WorldCreationException{
+    public static void createWorldFromFile(NamespacedKey id, @Nullable String bukkitId, @Nullable String folder, WorldFile file) throws WorldCreationException{
         if(!loaded)throw new RuntimeException("External loads not accepted in plugin load phase");
 
-        if(Bukkit.getWorld(id)!=null)throw new WorldCreationException("check phase error: World with vanilla id "+id.asString()+" already exist");
-        if(bukkitId!=null&&Bukkit.getWorld(bukkitId)!=null)throw new WorldCreationException("check phase error: World with bukkit id "+bukkitId+" already exist");
+        Objects.requireNonNull(id,"id");
+        Objects.requireNonNull(file,"file");
+
+        worldDataCheck(id,bukkitId,folder);
+
+        CustomWorld world;
+        try{
+            world=new CustomWorld(id,bukkitId,folder,file);
+        }catch(RuntimeException e){
+            throw new WorldCreationException(e.getMessage(),WorldCreationException.Phase.build);
+        }
+
+        try{
+            world.load();
+        }catch(RuntimeException e){
+            throw new WorldCreationException(e.getMessage(),WorldCreationException.Phase.load);
+        }
+
+        worlds.add(world);
+    }
+
+    public static MagicWorld createWorldFromSettings(CustomWorldSettings settings) throws WorldCreationException{
+        if(!loaded)throw new RuntimeException("External loads not accepted in plugin load phase");
+        Objects.requireNonNull(settings,"settings");
+
+        worldDataCheck(settings.id,settings.bukkitId,settings.folder);
+
+        CustomWorld world;
+        try{
+            world=new CustomWorld(settings);
+        }catch(RuntimeException e){
+            throw new WorldCreationException(e.getMessage(),WorldCreationException.Phase.build);
+        }
+
+        try{
+            world.load();
+        }catch(RuntimeException e){
+            throw new WorldCreationException(e.getMessage(),WorldCreationException.Phase.load);
+        }
+
+        worlds.add(world);
+        return world;
+    }
+
+    private static void worldDataCheck(NamespacedKey id,@Nullable String bukkitId,@Nullable String folder) throws WorldCreationException{
+        if(Bukkit.getWorld(id)!=null)throw new WorldCreationException("world with vanilla id "+id.asString()+" already exist",WorldCreationException.Phase.check);
+        if(bukkitId!=null&&Bukkit.getWorld(bukkitId)!=null)throw new WorldCreationException("world with bukkit id "+bukkitId+" already exist",WorldCreationException.Phase.check);
 
         if(worlds.stream()
-            .anyMatch(cw->cw.id.equals(id)))throw new WorldCreationException("check phase error: already exist unloaded world with vanilla id "+id.asString());
+            .anyMatch(cw->cw.id.equals(id)))throw new WorldCreationException("already exist unloaded world with vanilla id "+id.asString(),WorldCreationException.Phase.check);
         if(worlds.stream()
-            .anyMatch(cw->cw.bukkitId.equals(bukkitId)))throw new WorldCreationException("check phase error: already exist unloaded world with bukkit id "+bukkitId);
+            .anyMatch(cw->cw.bukkitId.equals(bukkitId)))throw new WorldCreationException("already exist unloaded world with bukkit id "+bukkitId,WorldCreationException.Phase.check);
         if(worlds.stream()
-            .anyMatch(cw->cw.folder.equals(folder)))throw new WorldCreationException("check phase error: already exist unloaded world with folder "+folder);
+            .anyMatch(cw->cw.folder.equals(folder)))throw new WorldCreationException("already exist unloaded world with folder path "+folder,WorldCreationException.Phase.check);
 
         if(folder!=null){
             Path folderPath;
             try{
                 folderPath=Bukkit.getWorldContainer().toPath().resolve(folder);
             }catch(InvalidPathException e){
-                throw new WorldCreationException("check phase error: invalid path "+e.getMessage());
+                throw new WorldCreationException("invalid path "+e.getMessage(),WorldCreationException.Phase.check);
             }
 
-            if(folderPath.toFile().isFile())throw new WorldCreationException("check phase error: Folder "+folder+" already exist as file");
-        }
-
-        CustomWorld world;
-        try{
-            world=new CustomWorld(id,bukkitId,folder,file);
-        }catch(RuntimeException e){
-            throw new WorldCreationException("build phase error: "+e.getMessage());
-        }
-
-        try{
-            world.load();
-        }catch(RuntimeException e){
-            World bukkit=world.world();
-            if(bukkit!=null){
-                Bukkit.unloadWorld(bukkit,false);
-            }
-
-            throw new WorldCreationException("load phase error: "+e.getMessage());
-        }
-
-        worlds.add(world);
-    }
-
-    public static final class WorldCreationException extends Exception{
-        public WorldCreationException(String message){
-            super(message);
+            if(folderPath.toFile().isFile())throw new WorldCreationException("folder "+folder+" already exist as file",WorldCreationException.Phase.check);
         }
     }
 
-    public static void deleteWorld(NamespacedKey id){
+    public static void deleteWorld(NamespacedKey id) throws WorldDeletionException{
+        Objects.requireNonNull(id,"id");
+
         CustomWorld world=worlds.stream()
             .filter(cw->cw.id.equals(id)).findAny().orElse(null);
-        if(world==null)throw new RuntimeException("No world: "+id.asString());
+        if(world==null)throw new WorldDeletionException("Unknown world: "+id.asString());
 
         logger.info("Deleting world {}",id.asString());
         world.forDeletion();
@@ -312,7 +336,7 @@ public final class WorldMagic extends JavaPlugin {
             worlds.stream()
                 .filter(cw->cw.loaded()&&cw.id.equals(world.getKey())).findAny()
                 .ifPresent(cw->{
-                    logger.info("Redirecting unload to WorldMagic...");
+                    logger.info("Redirecting {} unload to WorldMagic...",world.getKey().asString());
                     e.setCancelled(true);
 
                     cw.unload();

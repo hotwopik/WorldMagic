@@ -6,7 +6,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.tree.LiteralCommandNode;
-import io.hotwop.worldmagic.util.Util;
+import io.hotwop.worldmagic.util.VersionUtil;
 import io.hotwop.worldmagic.util.Weather;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
@@ -18,8 +18,6 @@ import org.bukkit.NamespacedKey;
 import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.function.Supplier;
 
 public final class NodeBuilders{
@@ -28,7 +26,7 @@ public final class NodeBuilders{
     public static LiteralCommandNode<CommandSourceStack> buildGameruleNode(String root, GameruleOperation value, GameruleQuery get) {
         LiteralArgumentBuilder<CommandSourceStack> builder = Commands.literal(root);
 
-        Util.visitGameRules(new GameRules.GameRuleTypeVisitor(){
+        VersionUtil.visitGameRules(new GameRules.GameRuleTypeVisitor(){
             public <T extends GameRules.Value<T>> void visit(GameRules.@NotNull Key<T> key, GameRules.@NotNull Type<T> type) {
                 builder.then(Commands.literal(key.getId())
                     .executes(ctx -> get.consume(key, type, ctx))

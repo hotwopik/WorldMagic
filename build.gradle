@@ -39,6 +39,7 @@ tasks {
         minecraftVersion("1.20.6")
     }
     jar{
+        duplicatesStrategy(DuplicatesStrategy.EXCLUDE)
         dependsOn(project(":api").getTasksByName("assemble",false))
         from(zipTree(file('api/build/libs/api.jar')))
     }

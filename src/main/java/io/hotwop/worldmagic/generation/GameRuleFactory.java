@@ -1,6 +1,6 @@
 package io.hotwop.worldmagic.generation;
 
-import io.hotwop.worldmagic.util.Util;
+import io.hotwop.worldmagic.util.VersionUtil;
 import io.hotwop.worldmagic.util.dfu.ConfigurateOps;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.world.level.GameRules;
@@ -28,8 +28,8 @@ public final class GameRuleFactory{
         public GameRuleFactory deserialize(@NotNull Type type, @NotNull ConfigurationNode node) throws SerializationException {
             boolean override=node.node("override").getBoolean();
 
-            GameRules rules=Util.createGameRules();
-            Util.visitGameRules(rules, new GameRules.GameRuleTypeVisitor() {
+            GameRules rules= VersionUtil.createGameRules();
+            VersionUtil.visitGameRules(rules, new GameRules.GameRuleTypeVisitor() {
                 @Override
                 public void visitBoolean(GameRules.Key<GameRules.BooleanValue> key, GameRules.Type<GameRules.BooleanValue> type) {
                     ConfigurationNode subNode=node.node(key.getId());

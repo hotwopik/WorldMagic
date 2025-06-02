@@ -3,6 +3,7 @@ package io.hotwop.worldmagic.generation;
 import com.google.gson.JsonObject;
 import com.mojang.serialization.JsonOps;
 import io.hotwop.worldmagic.WorldMagic;
+import io.hotwop.worldmagic.api.GeneratorLike;
 import io.hotwop.worldmagic.util.dfu.ConfigurateOps;
 import io.hotwop.worldmagic.util.serializer.EnumSwitchSerializer;
 import net.minecraft.server.dedicated.DedicatedServerProperties;
@@ -21,7 +22,7 @@ import org.spongepowered.configurate.serialize.TypeSerializerCollection;
 import java.lang.reflect.Type;
 import java.util.function.Predicate;
 
-public sealed interface GeneratorSettings permits GeneratorSettings.Vanilla,GeneratorSettings.Plugin{
+public sealed interface GeneratorSettings extends GeneratorLike permits GeneratorSettings.Vanilla,GeneratorSettings.Plugin{
     TypeSerializerCollection serializer=TypeSerializerCollection.builder()
         .register(Plugin.Serializer.instance)
         .register(Vanilla.class,Vanilla.Serializer.instance)

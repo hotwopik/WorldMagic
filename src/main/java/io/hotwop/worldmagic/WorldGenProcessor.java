@@ -2,7 +2,8 @@ package io.hotwop.worldmagic;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.Lifecycle;
-import io.hotwop.worldmagic.util.Util;
+import io.hotwop.worldmagic.util.RegistrationUtil;
+import io.hotwop.worldmagic.util.VersionUtil;
 import io.hotwop.worldmagic.util.dfu.ConfigurateOps;
 import io.hotwop.worldmagic.util.serializer.NamespacedKeySerializer;
 import io.leangen.geantyref.TypeToken;
@@ -211,11 +212,11 @@ public final class WorldGenProcessor{
 
             Map<ResourceKey<T>,T> vanillaMap=new HashMap<>();
             map.forEach((id,val)->vanillaMap
-                .put(ResourceKey.create(registry, Util.createResourceLocation(id)),val)
+                .put(ResourceKey.create(registry, VersionUtil.createResourceLocation(id)),val)
             );
 
-            Util.registerIgnoreFreezeAll(registry,access,vanillaMap,Lifecycle.experimental());
-            Util.bindRegistrations(registry,access,vanillaMap);
+            RegistrationUtil.registerIgnoreFreezeAll(registry,access,vanillaMap,Lifecycle.experimental());
+            RegistrationUtil.bindRegistrations(registry,access,vanillaMap);
         }
     }
 
@@ -315,11 +316,11 @@ public final class WorldGenProcessor{
 
         Map<ResourceKey<DimensionType>,DimensionType> vanillaDimensionTypes=new HashMap<>();
         dimensionTypes.forEach((id,type)->vanillaDimensionTypes
-            .put(ResourceKey.create(Registries.DIMENSION_TYPE, Util.createResourceLocation(id)),type)
+            .put(ResourceKey.create(Registries.DIMENSION_TYPE, VersionUtil.createResourceLocation(id)),type)
         );
 
-        Util.registerIgnoreFreezeAll(Registries.DIMENSION_TYPE,access,vanillaDimensionTypes, Lifecycle.experimental());
-        Util.bindRegistrations(Registries.DIMENSION_TYPE,access,vanillaDimensionTypes);
+        RegistrationUtil.registerIgnoreFreezeAll(Registries.DIMENSION_TYPE,access,vanillaDimensionTypes, Lifecycle.experimental());
+        RegistrationUtil.bindRegistrations(Registries.DIMENSION_TYPE,access,vanillaDimensionTypes);
 
         logger().info("Dimension types loaded");
     }

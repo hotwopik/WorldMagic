@@ -6,7 +6,7 @@ import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import io.hotwop.worldmagic.command.*;
 import io.hotwop.worldmagic.file.WorldFile;
-import io.hotwop.worldmagic.util.Util;
+import io.hotwop.worldmagic.util.VersionUtil;
 import io.hotwop.worldmagic.util.Weather;
 import io.papermc.paper.adventure.PaperAdventure;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
@@ -26,6 +26,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.level.GameRules;
 import org.bukkit.*;
+import org.bukkit.command.CommandSender;
 import org.bukkit.event.world.TimeSkipEvent;
 import org.jetbrains.annotations.NotNull;
 
@@ -37,6 +38,13 @@ public final class WorldMagicBootstrap implements PluginBootstrap{
         return logger;
     }
 
+    public static boolean hasOneOfPermission(CommandSender sender, String[] permissions){
+        for(String permission:permissions){
+            if(sender.hasPermission(permission))return true;
+        }
+        return false;
+    }
+
     public void bootstrap(@NotNull BootstrapContext ctx) {
         logger=ctx.getLogger();
 
@@ -45,7 +53,7 @@ public final class WorldMagicBootstrap implements PluginBootstrap{
         }
 
         try{
-            WorldMagicBootstrap.class.getClassLoader().loadClass(Util.class.getName());
+            WorldMagicBootstrap.class.getClassLoader().loadClass(VersionUtil.class.getName());
         }catch(ClassNotFoundException e){
             throw new RuntimeException(e);
         }
@@ -65,7 +73,8 @@ public final class WorldMagicBootstrap implements PluginBootstrap{
 
     public static final DynamicCommandExceptionType worldNotLoaded=new DynamicCommandExceptionType(obj->Component.literal("World "+obj+" isn't loaded"));
 
-    public static final DynamicCommandExceptionType worldCreationError=new DynamicCommandExceptionType(obj->Component.literal("Error to create world: "+obj));
+    public static final DynamicCommandExceptionType worldCreateError=new DynamicCommandExceptionType(obj->Component.literal("Error to create world: "+obj));
+    public static final DynamicCommandExceptionType worldDeleteException=new DynamicCommandExceptionType(obj->Component.literal("Error to delete world: "+obj));
 
     private static final String[] globalPermissionSet={
         "worldmagic.command",
@@ -88,9 +97,9 @@ public final class WorldMagicBootstrap implements PluginBootstrap{
 
     private LiteralCommandNode<CommandSourceStack> buildCommand(){
         return Commands.literal("worldmagic")
-            .requires(ctx->Util.hasOneOfPermission(ctx.getSender(),globalPermissionSet))
+            .requires(ctx-> hasOneOfPermission(ctx.getSender(),globalPermissionSet))
             .then(Commands.literal("world")
-                .requires(ctx->Util.hasOneOfPermission(ctx.getSender(),worldPermissionSet))
+                .requires(ctx-> hasOneOfPermission(ctx.getSender(),worldPermissionSet))
                 .then(Commands.argument("world",CustomWorldArgument.instance)
                     .then(Commands.literal("load").executes(ctx->{
                         CustomWorld world=ctx.getArgument("world",CustomWorld.class);
@@ -287,39 +296,39 @@ public final class WorldMagicBootstrap implements PluginBootstrap{
                 )
             )
             .then(Commands.literal("create")
-                .requires(ctx->Util.hasOneOfPermission(ctx.getSender(),createPermissionSet))
+                .requires(ctx-> hasOneOfPermission(ctx.getSender(),createPermissionSet))
                 .then(Commands.argument("prototype",WorldFileArgument.instance).then(Commands.argument("id",ArgumentTypes.namespacedKey())
                     .executes(ctx->{
-                        WorldFile file=ctx.getArgument("prototype",WorldFile.class);
+                        WorldFile file=ctx.getArgument("prototype", WorldFile.class);
                         NamespacedKey id=ctx.getArgument("id",NamespacedKey.class);
 
                         ctx.getSource().getSender().sendMessage("Creating world...");
                         try{
                             WorldMagic.createWorldFromFile(id,file);
-                        }catch(WorldMagic.WorldCreationException e){
-                            throw worldCreationError.create(e.getMessage());
+                        }catch(WorldCreationException e){
+                            throw worldCreateError.create(e.getMessage());
                         }
 
                         return 1;
                     })
                     .then(Commands.argument("bukkitId",StringArgumentType.word())
                         .executes(ctx->{
-                            WorldFile file=ctx.getArgument("prototype",WorldFile.class);
+                            WorldFile file=ctx.getArgument("prototype", WorldFile.class);
                             NamespacedKey id=ctx.getArgument("id",NamespacedKey.class);
                             String bukkitId=ctx.getArgument("bukkitId",String.class);
 
                             ctx.getSource().getSender().sendMessage("Creating world...");
                             try{
                                 WorldMagic.createWorldFromFile(id,bukkitId,file);
-                            }catch(WorldMagic.WorldCreationException e){
-                                throw worldCreationError.create(e.getMessage());
+                            }catch(WorldCreationException e){
+                                throw worldCreateError.create(e.getMessage());
                             }
 
                             return 1;
                         })
                         .then(Commands.argument("folder",StringArgumentType.string())
                             .executes(ctx->{
-                                WorldFile file=ctx.getArgument("prototype",WorldFile.class);
+                                WorldFile file=ctx.getArgument("prototype", WorldFile.class);
                                 NamespacedKey id=ctx.getArgument("id",NamespacedKey.class);
                                 String bukkitId=ctx.getArgument("bukkitId",String.class);
                                 String folder=ctx.getArgument("folder",String.class);
@@ -327,8 +336,8 @@ public final class WorldMagicBootstrap implements PluginBootstrap{
                                 ctx.getSource().getSender().sendMessage("Creating world...");
                                 try{
                                     WorldMagic.createWorldFromFile(id,bukkitId,folder,file);
-                                }catch(WorldMagic.WorldCreationException e){
-                                    throw worldCreationError.create(e.getMessage());
+                                }catch(WorldCreationException e){
+                                    throw worldCreateError.create(e.getMessage());
                                 }
 
                                 return 1;
@@ -338,7 +347,7 @@ public final class WorldMagicBootstrap implements PluginBootstrap{
                 ))
             )
             .then(Commands.literal("reload")
-                .requires(ctx->Util.hasOneOfPermission(ctx.getSender(),reloadPermissionSet))
+                .requires(ctx-> hasOneOfPermission(ctx.getSender(),reloadPermissionSet))
                 .executes(ctx->{
                     ctx.getSource().getSender().sendMessage("Reloading world files...");
 

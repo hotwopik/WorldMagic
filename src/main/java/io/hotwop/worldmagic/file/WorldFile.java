@@ -118,7 +118,7 @@ public final class WorldFile{
     public static final class WorldBorderSettings{
         public boolean override=false;
 
-        public double size=60000000;
+        public double size=29999984;
         public double safeZone=5;
         public double damagePerBlock=0.2;
 

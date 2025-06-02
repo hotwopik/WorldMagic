@@ -2,7 +2,9 @@ package io.hotwop.worldmagic.command;
 
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import io.hotwop.worldmagic.CustomWorld;
+import io.hotwop.worldmagic.WorldDeletionException;
 import io.hotwop.worldmagic.WorldMagic;
+import io.hotwop.worldmagic.WorldMagicBootstrap;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import net.kyori.adventure.text.Component;
@@ -36,7 +38,11 @@ public final class DeleteSubCommand{
                                 .clickEvent(ClickEvent.callback(
                                     aud->{
                                         aud.sendMessage(Component.text("Deleting world..."));
-                                        WorldMagic.deleteWorld(world.id);
+                                        try{
+                                            WorldMagic.deleteWorld(world.id);
+                                        }catch (WorldDeletionException e){
+                                            aud.sendMessage(Component.text("Error to delete world: "+e.getMessage(),NamedTextColor.RED));
+                                        }
                                     },
                                     bl->bl
                                         .uses(1)
@@ -51,7 +57,11 @@ public final class DeleteSubCommand{
                         if(awaitDeletion){
                             awaitDeletion=false;
 
-                            WorldMagic.deleteWorld(world.id);
+                            try{
+                                WorldMagic.deleteWorld(world.id);
+                            }catch(WorldDeletionException e){
+                                throw WorldMagicBootstrap.worldDeleteException.create(e.getMessage());
+                            }
                         }else{
                             awaitDeletion=true;
                             Bukkit.getAsyncScheduler().runDelayed(WorldMagic.instance(),task->awaitDeletion=false,5,TimeUnit.SECONDS);

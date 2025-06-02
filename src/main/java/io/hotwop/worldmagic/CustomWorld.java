@@ -2,13 +2,17 @@ package io.hotwop.worldmagic;
 
 import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.Lifecycle;
+import io.hotwop.worldmagic.api.MagicWorld;
+import io.hotwop.worldmagic.api.WorldAlreadyLoadedException;
+import io.hotwop.worldmagic.api.WorldAlreadyUnloadedException;
+import io.hotwop.worldmagic.api.settings.*;
 import io.hotwop.worldmagic.file.WorldFile;
 import io.hotwop.worldmagic.generation.Dimension;
 import io.hotwop.worldmagic.generation.GameRuleFactory;
 import io.hotwop.worldmagic.generation.GeneratorSettings;
+import io.hotwop.worldmagic.file.FileUtil;
 import io.hotwop.worldmagic.util.ImmutableLocation;
-import io.hotwop.worldmagic.util.Util;
-import it.unimi.dsi.fastutil.longs.LongIterator;
+import io.hotwop.worldmagic.util.VersionUtil;
 import net.minecraft.core.*;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
@@ -17,7 +21,6 @@ import net.minecraft.nbt.NbtException;
 import net.minecraft.nbt.ReportedNbtException;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.Main;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerChunkCache;
 import net.minecraft.server.level.ServerLevel;
@@ -25,14 +28,18 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.progress.ChunkProgressListener;
 import net.minecraft.util.Mth;
 import net.minecraft.util.datafix.DataFixers;
-import net.minecraft.world.Difficulty;
 import net.minecraft.world.entity.ai.village.VillageSiege;
 import net.minecraft.world.entity.npc.CatSpawner;
 import net.minecraft.world.entity.npc.WanderingTraderSpawner;
 import net.minecraft.world.level.*;
 import net.minecraft.world.level.biome.BiomeManager;
+import net.minecraft.world.level.biome.MultiNoiseBiomeSource;
+import net.minecraft.world.level.biome.MultiNoiseBiomeSourceParameterLists;
+import net.minecraft.world.level.biome.TheEndBiomeSource;
 import net.minecraft.world.level.border.WorldBorder;
 import net.minecraft.world.level.chunk.ChunkGenerator;
+import net.minecraft.world.level.dimension.BuiltinDimensionTypes;
+import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.dimension.LevelStem;
 import net.minecraft.world.level.levelgen.*;
 import net.minecraft.world.level.storage.*;
@@ -61,7 +68,7 @@ import java.util.function.BooleanSupplier;
 
 import static io.hotwop.worldmagic.WorldMagic.*;
 
-public final class CustomWorld {
+public final class CustomWorld implements MagicWorld {
     private static final ExecutorService threadManager=Executors.newCachedThreadPool();
     private static final Method vanillaSetSpawn;
     private static final Field ioExecutorField;
@@ -72,7 +79,7 @@ public final class CustomWorld {
         try {
             vanillaSetSpawn=MinecraftServer.class.getDeclaredMethod("setInitialSpawn", ServerLevel.class, ServerLevelData.class, boolean.class, boolean.class);
 
-            if(Util.dataVersion<4082){
+            if(VersionUtil.dataVersion<4082){
                 ioExecutorField=DimensionDataStorage.class.getDeclaredField("ioExecutor");
                 ioExecutorField.setAccessible(true);
             }else ioExecutorField=null;
@@ -110,90 +117,6 @@ public final class CustomWorld {
     public final GameRuleFactory gamerules;
     public final WorldBorderSettings border;
 
-    public record WorldProperties(
-        Long seed,
-        boolean generateStructures,
-        boolean bonusChest,
-        GameType defaultGamemode,
-        Difficulty difficulty
-    ){
-        public WorldProperties(WorldFile.WorldProperties file){
-            this(file.seed,file.generateStructures,file.bonusChest,Util.mapGameMode(file.defaultGamemode),Util.mapDifficulty(file.difficulty));
-        }
-    }
-
-    public record Loading(
-        boolean async,
-        boolean startup,
-        boolean override,
-        boolean loadChunks,
-        boolean save,
-        boolean folderDeletion,
-        boolean loadControl
-    ){
-        public Loading(WorldFile.Loading file){
-            this(file.async,file.startup,file.override,file.loadChunks,file.save,file.folderDeletion,file.loadControl);
-        }
-    }
-
-    public record SpawnPosition(
-        boolean override,
-        int x,
-        int y,
-        int z,
-        float yaw
-    ){
-        public SpawnPosition(WorldFile.SpawnPosition file){
-            this(file.override,file.x,file.y,file.z,file.yaw);
-        }
-    }
-
-    public record AllowSettings(
-        boolean animals,
-        boolean monsters,
-        boolean pvp
-    ){
-        public AllowSettings(WorldFile.AllowSettings file){
-            this(file.animals,file.monsters,file.pvp);
-        }
-    }
-
-    public record WorldBorderSettings(
-        boolean override,
-        double size,
-        double safeZone,
-        double damagePerBlock,
-        Center center,
-        Warning warning
-    ){
-        public WorldBorderSettings(WorldFile.WorldBorderSettings file){
-            this(file.override,file.size,file.safeZone,file.damagePerBlock,new Center(file.center.x,file.center.z),new Warning(file.warning.distance,file.warning.time));
-        }
-
-        public record Center(
-            double x,
-            double z
-        ){}
-
-        public record Warning(
-            int distance,
-            int time
-        ){}
-
-        public WorldBorder.Settings build(){
-            WorldBorder handle=new WorldBorder();
-
-            handle.setSize(size);
-            handle.setDamageSafeZone(safeZone);
-            handle.setDamagePerBlock(damagePerBlock);
-            handle.setCenter(center.x,center.z);
-            handle.setWarningBlocks(warning.distance);
-            handle.setWarningTime(warning.time);
-
-            return handle.createSettings();
-        }
-    }
-
     public final Path folderPath;
     public final ResourceLocation vanillaLocId;
     public final ResourceKey<LevelStem> vanillaId;
@@ -202,14 +125,56 @@ public final class CustomWorld {
     public final LevelStem stem;
 
     private boolean loaded=false;
+
+    public NamespacedKey id(){
+        return id;
+    }
+    public String bukkitId(){
+        return bukkitId;
+    }
+    public String folder(){
+        return folder;
+    }
+    public Path folderPath(){
+        return folderPath;
+    }
+
+    public CustomWorldSettings createSettings(@NotNull NamespacedKey id){
+        Objects.requireNonNull(id,"id");
+        return createSettings(id,id.namespace().equals(NamespacedKey.MINECRAFT)?id.value():id.namespace()+"_"+id.value());
+    }
+
+    public CustomWorldSettings createSettings(@NotNull NamespacedKey id, @NotNull String bukkitId){
+        Objects.requireNonNull(id,"id");
+        Objects.requireNonNull(bukkitId,"bukkitId");
+        return createSettings(id,bukkitId,bukkitId);
+    }
+
+    public CustomWorldSettings createSettings(@NotNull NamespacedKey id, @NotNull String bukkitId, @NotNull String folder){
+        Objects.requireNonNull(id,"id");
+        Objects.requireNonNull(bukkitId,"bukkitId");
+        Objects.requireNonNull(folder,"folder");
+
+        CustomWorldSettings out=new CustomWorldSettings(id,bukkitId,folder);
+
+        out.setWorldProperties(worldProperties);
+        out.setDimension(dimension);
+        out.setLoadingSettings(loading);
+        out.setAllowSettings(allowSettings);
+        out.setWorldBorderSettings(border);
+
+        if(spawnPosition!=null)out.setSpawn(spawnPosition);
+        if(callbackLocation!=null)out.setCallbackLocation(callbackLocation);
+
+        FileUtil.fromFactory(out.gameRuleSet(),gamerules);
+        out.setGameRuleOverride(gamerules.override);
+
+        return out;
+    }
+
     public boolean loaded(){
         return loaded;
     }
-
-    private boolean forDeletion=false;
-
-    private World bukkitWorld=null;
-    private ServerLevel level=null;
 
     public World world(){
         if(!loaded)return null;
@@ -220,14 +185,23 @@ public final class CustomWorld {
         return level;
     }
 
+    public boolean isForDeletion(){
+        return forDeletion;
+    }
+
+    private boolean forDeletion=false;
+
+    private World bukkitWorld=null;
+    private ServerLevel level=null;
+
     protected CustomWorld(WorldFile file){
         this(file.id,file.bukkitId,file.folder,file);
     }
 
-    protected CustomWorld(NamespacedKey id,String bukkitId,String folder,WorldFile file){
+    protected CustomWorld(NamespacedKey id, String bukkitId, String folder, WorldFile file){
         this.id=id;
 
-        vanillaLocId= Util.createResourceLocation(id);
+        vanillaLocId= VersionUtil.createResourceLocation(id);
         vanillaId=ResourceKey.create(Registries.LEVEL_STEM,vanillaLocId);
         vanillaLevelId=ResourceKey.create(Registries.DIMENSION,vanillaLocId);
 
@@ -236,14 +210,71 @@ public final class CustomWorld {
         this.folder=folder==null?this.bukkitId:folder;
         folderPath=Bukkit.getWorldContainer().toPath().resolve(this.folder);
 
-        worldProperties=new WorldProperties(file.worldProperties);
+        worldProperties= FileUtil.fromFile(file.worldProperties);
         dimension=file.dimension;
-        loading=new Loading(file.loading);
-        spawnPosition=file.spawnPosition==null?null:new SpawnPosition(file.spawnPosition);
+        loading= FileUtil.fromFile(file.loading);
+        spawnPosition=file.spawnPosition==null?null:FileUtil.fromFile(file.spawnPosition);
         callbackLocation=file.callbackLocation==null?null:new ImmutableLocation(file.callbackLocation);
-        allowSettings=new AllowSettings(file.allowSettings);
+        allowSettings= FileUtil.fromFile(file.allowSettings);
         gamerules=file.gamerules;
-        border=new WorldBorderSettings(file.border);
+        border=FileUtil.fromFile(file.border);
+
+        if(dimension instanceof Dimension.Reference ref)dimensionId=ref.getKey();
+        else dimensionId=vanillaId;
+
+        stem=dimension.get();
+    }
+
+    protected CustomWorld(CustomWorldSettings settings){
+        id=settings.id;
+        bukkitId=settings.bukkitId;
+        folder=settings.folder;
+
+        vanillaLocId= VersionUtil.createResourceLocation(id);
+        vanillaId=ResourceKey.create(Registries.LEVEL_STEM,vanillaLocId);
+        vanillaLevelId=ResourceKey.create(Registries.DIMENSION,vanillaLocId);
+
+        folderPath=Bukkit.getWorldContainer().toPath().resolve(this.folder);
+
+        worldProperties=settings.worldProperties()==null?new WorldProperties(
+            null,
+            false,
+            false,
+            GameMode.SURVIVAL,
+            Difficulty.NORMAL
+        ):settings.worldProperties();
+
+        if(!(settings.dimension() instanceof Dimension dim))throw new RuntimeException("Don't try to spoof DimensionLike!");
+        dimension=dim;
+
+        loading=settings.loadingSettings()==null?new Loading(
+            false,
+            true,
+            true,
+            true,
+            false,
+            true
+        ):settings.loadingSettings();
+
+        spawnPosition=settings.spawn();
+        callbackLocation=settings.callbackLocation();
+        allowSettings=settings.allowSettings()==null?new AllowSettings(
+            true,
+            true,
+            true
+        ):settings.allowSettings();
+
+        gamerules=FileUtil.toFactory(settings.gameRuleSet(),settings.isGameRuleOverride());
+        border=settings.worldBorderSettings()==null?new WorldBorderSettings(
+            false,
+            29999984,
+            5,
+            0.2,
+            0,
+            0,
+            5,
+            300
+        ):settings.worldBorderSettings();
 
         if(dimension instanceof Dimension.Reference ref)dimensionId=ref.getKey();
         else dimensionId=vanillaId;
@@ -254,12 +285,12 @@ public final class CustomWorld {
     public void load(){
         if(shutdown)return;
 
-        if(loaded)throw new RuntimeException("World already loaded!");
+        if(loaded)throw new WorldAlreadyLoadedException();
         if(forDeletion)throw new RuntimeException("World for deletion!");
 
         loaded=true;
 
-        if(loading.async)threadManager.execute(this::loadProcess);
+        if(loading.async())threadManager.execute(this::loadProcess);
         else{
             if(vanillaServer().isSameThread())loadProcess();
             else scheduler().runTask(instance(),this::loadProcess);
@@ -268,12 +299,12 @@ public final class CustomWorld {
 
     public void unload(){
         if(shutdown)return;
-        if(!loaded)throw new RuntimeException("World already unloaded!");
+        if(!loaded)throw new WorldAlreadyUnloadedException();
         loaded=false;
 
         List<ServerPlayer> players=List.copyOf(level.players());
 
-        if((loading.save&&Bukkit.isStopping())||players.isEmpty()){
+        if((loading.save()&&Bukkit.isStopping())||players.isEmpty()){
             if(vanillaServer().isSameThread())unloadProcess();
             else scheduler().runTask(instance(),this::unloadProcess);
         }else{
@@ -295,25 +326,21 @@ public final class CustomWorld {
         forDeletion=true;
     }
 
-    public boolean isForDeletion(){
-        return forDeletion;
-    }
-
     @SuppressWarnings("deprecation")
     private void loadProcess(){
         if(checkDuplication()){
-            logger().error("Error to load custom world {}, world with that vanilla id or bukkit id already loaded",id.asMinimalString());
+            logger().error("Error to load custom world {}, world with that vanilla id or bukkit id already loaded",id.asString());
             loaded=false;
             return;
         }
 
         if(folderPath.toFile().isFile()){
-            logger().error("Error to load custom world {}, world \"folder\" is file",id.asMinimalString());
+            logger().error("Error to load custom world {}, world \"folder\" is file",id.asString());
             loaded=false;
             return;
         }
 
-        logger().info("Creating world {}",id.asMinimalString());
+        logger().info("Creating world {}",id.asString());
 
         LevelStorageSource.LevelStorageAccess levelStorage;
 
@@ -323,7 +350,7 @@ public final class CustomWorld {
         try{
             levelStorage=LevelStorageSource.createDefault(container).validateAndCreateAccess(folderName,dimensionId);
         } catch (ContentValidationException | IOException e) {
-            logger().error("Error to load custom world {}, folder creation error: {}",id.asMinimalString(),e.toString());
+            logger().error("Error to load custom world {}, folder creation error: {}",id.asString(),e.toString());
             loaded=false;
             return;
         }
@@ -338,15 +365,14 @@ public final class CustomWorld {
             } catch (NbtException | ReportedNbtException | IOException ioexception) {
                 LevelStorageSource.LevelDirectory directory = levelStorage.getLevelDirectory();
 
-                MinecraftServer.LOGGER.warn("Failed to load world data from {}", directory.dataFile(), ioexception);
-                MinecraftServer.LOGGER.info("Attempting to use fallback");
+                logger().warn("Failed to load world {} data from {}", id.asString(), directory.dataFile(), ioexception);
+                logger().info("Attempting to use fallback");
 
                 try {
                     save = levelStorage.getDataTagFallback();
                     worldinfo = levelStorage.getSummary(save);
                 } catch (NbtException | ReportedNbtException | IOException ioexception1) {
-                    MinecraftServer.LOGGER.error("Failed to load world data from {}", directory.oldDataFile(), ioexception1);
-                    MinecraftServer.LOGGER.error("Failed to load world data from {} and {}. World files may be corrupted. Shutting down.", directory.dataFile(), directory.oldDataFile());
+                    logger().error("Failed to load world {} data from {}", id.asString(), directory.oldDataFile(), ioexception1);
                     loaded=false;
                     return;
                 }
@@ -355,13 +381,13 @@ public final class CustomWorld {
             }
 
             if (worldinfo.requiresManualConversion()) {
-                MinecraftServer.LOGGER.info("This world must be opened in an older version (like 1.6.4) to be safely converted");
+                logger().warn("World {} must be opened in an older version (like 1.6.4) to be safely converted",id.asString());
                 loaded=false;
                 return;
             }
 
             if (!worldinfo.isCompatible()) {
-                MinecraftServer.LOGGER.info("This world was created by an incompatible version.");
+                logger().info("World {} was created by an incompatible version.",id.asString());
                 loaded=false;
                 return;
             }
@@ -385,12 +411,12 @@ public final class CustomWorld {
         PrimaryLevelData.SpecialWorldProperty specialProperty;
 
         if(save==null){
-            WorldDimensions worldDimensions=Util.createWorldDimensions(generator.create());
+            WorldDimensions worldDimensions= VersionUtil.createWorldDimensions(generator.create());
 
             WritableRegistry<LevelStem> writableDimensionRegistry = new MappedRegistry<>(Registries.LEVEL_STEM, Lifecycle.experimental());
             worldDimensions.dimensions().forEach((key,dimension)->writableDimensionRegistry.register(key,dimension,new RegistrationInfo(
                 Optional.empty(),
-                Util.isStable(key,dimension)?Lifecycle.stable():Lifecycle.experimental()
+                isStable(key,dimension)?Lifecycle.stable():Lifecycle.experimental()
             )));
 
             dimensionRegistry=writableDimensionRegistry.freeze();
@@ -398,16 +424,16 @@ public final class CustomWorld {
             specialProperty=specialWorldProperty(generator);
             levelData=getPrimaryLevelData(dimensionRegistry,specialProperty);
 
-            levelData.setWorldBorder(border.build());
+            levelData.setWorldBorder(FileUtil.buildWorldBorder(border));
         }else{
-            LevelDataAndDimensions saveData=Util.getLevelDataAndDimension(save,worldLoader().dataConfiguration(),Util.getRegistry(Registries.LEVEL_STEM));
+            LevelDataAndDimensions saveData= VersionUtil.getLevelDataAndDimension(save,worldLoader().dataConfiguration(), VersionUtil.getRegistry(Registries.LEVEL_STEM));
 
             dimensionRegistry=saveData.dimensions().dimensions();
             levelData=(PrimaryLevelData)saveData.worldData();
             specialProperty=saveData.dimensions().specialWorldProperty();
 
             if(gamerules!=null&&gamerules.override)levelData.getGameRules().assignFrom(gamerules.gameRules,null);
-            if(border.override)levelData.setWorldBorder(border.build());
+            if(border.override())levelData.setWorldBorder(FileUtil.buildWorldBorder(border));
         }
 
         levelData.customDimensions=dimensionRegistry;
@@ -415,7 +441,7 @@ public final class CustomWorld {
         levelData.setModdedInfo(vanillaServer().getServerModName(),vanillaServer().getModdedStatus().shouldReportAsModified());
 
         if(vanillaServer().options.has("forceUpgrade")){
-            Util.forceUpgrade.invoke(levelStorage,levelData,DataFixers.getDataFixer(), vanillaServer().options.has("eraseCache"), (BooleanSupplier)()->true, vanillaServer().registryAccess(), vanillaServer().options.has("recreateRegionFiles"));
+            VersionUtil.forceUpgrade.invoke(levelStorage,levelData,DataFixers.getDataFixer(), vanillaServer().options.has("eraseCache"), (BooleanSupplier)()->true, vanillaServer().registryAccess(), vanillaServer().options.has("recreateRegionFiles"));
         }
 
         int loadRadius=levelData.getGameRules().getRule(GameRules.RULE_SPAWN_CHUNK_RADIUS).get();
@@ -430,7 +456,7 @@ public final class CustomWorld {
             stem,
             loadListener,
             specialProperty==PrimaryLevelData.SpecialWorldProperty.DEBUG,
-            BiomeManager.obfuscateSeed(loading.override&&worldProperties.seed!=null?worldProperties.seed:levelData.worldGenOptions().seed()),
+            BiomeManager.obfuscateSeed(loading.override()&&worldProperties.seed()!=null?worldProperties.seed():levelData.worldGenOptions().seed()),
             List.of(new PhantomSpawner(),new PatrolSpawner(),new CatSpawner(),new VillageSiege(),new WanderingTraderSpawner(levelData)),
             true,
             vanillaServer().overworld().getRandomSequences(),
@@ -438,67 +464,71 @@ public final class CustomWorld {
             (generator instanceof GeneratorSettings.Plugin(String pl))? WorldCreator.getGeneratorForName(bukkitId,pl,Bukkit.getConsoleSender()):null,
             (pluginBiomeProvider==null)?null:WorldCreator.getBiomeProviderForName(bukkitId,pluginBiomeProvider,Bukkit.getConsoleSender())
         );
-        level.noSave=!loading.save;
-        level.pvpMode=allowSettings.pvp;
-        
-        if(save!=null&&loading.override){
-            level.serverLevelData.setDifficulty(worldProperties.difficulty);
-        }
+        level.noSave=!loading.save();
+        level.pvpMode=allowSettings.pvp();
 
         vanillaServer().addLevel(level);
 
         bukkitWorld=level.getWorld();
-        if(level.generator!=null)bukkitWorld.getPopulators().addAll(level.generator.getDefaultPopulators(bukkitWorld));
+        boolean init;
 
-        if(!loading.async){
-            WorldBorder worldBorder=level.getWorldBorder();
-            worldBorder.applySettings(levelData.getWorldBorder());
+        try{
+            if(level.generator!=null)bukkitWorld.getPopulators().addAll(level.generator.getDefaultPopulators(bukkitWorld));
 
-            pluginManager().callEvent(new WorldInitEvent(bukkitWorld));
+            if(!loading.async()){
+                WorldBorder worldBorder=level.getWorldBorder();
+                worldBorder.applySettings(levelData.getWorldBorder());
+
+                pluginManager().callEvent(new WorldInitEvent(bukkitWorld));
+            }
+
+            if(spawnPosition!=null&&spawnPosition.override())setSpawn(levelData);
+
+            if(!levelData.isInitialized()){
+                init=true;
+
+                if(spawnPosition!=null){
+                    if(!spawnPosition.override())setSpawn(levelData);
+                }else{
+                    try{
+                        vanillaSetSpawn.invoke(null,level,levelData,false,level.isDebug());
+                    } catch (IllegalAccessException|InvocationTargetException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+
+                if(!loading.async()&&worldProperties.bonusChest()){
+                    VersionUtil.getHolder(VersionUtil.getRegistry(level.registryAccess(),Registries.CONFIGURED_FEATURE),MiscOverworldFeatures.BONUS_CHEST)
+                        .value().place(level, level.chunkSource.getGenerator(), level.random, levelData.getSpawnPos());
+                }
+
+                levelData.setInitialized(true);
+            }else init=false;
+
+            VersionUtil.setSpawnSettings(level,allowSettings.monsters(),allowSettings.animals());
+
+            BlockPos spawnPos=level.getSharedSpawnPos();
+
+            loadListener.updateSpawnPos(new ChunkPos(spawnPos));
+            level.setDefaultSpawnPos(spawnPos,level.getSharedSpawnAngle());
+
+            logger().info("World {} initialization done!",id.asString());
+        }catch(RuntimeException e){
+            loaded=false;
+            Bukkit.unloadWorld(bukkitWorld,false);
+
+            throw e;
         }
 
-        if(spawnPosition!=null&&spawnPosition.override)setSpawn(levelData);
-
-        boolean init;
-        if(!levelData.isInitialized()){
-            init=true;
-
-            if(spawnPosition!=null){
-                if(!spawnPosition.override)setSpawn(levelData);
-            }else{
-                try{
-                    vanillaSetSpawn.invoke(null,level,levelData,false,level.isDebug());
-                } catch (IllegalAccessException|InvocationTargetException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-
-            if(!loading.async&&worldProperties.bonusChest){
-                Util.getHolder(Util.getRegistry(level.registryAccess(),Registries.CONFIGURED_FEATURE),MiscOverworldFeatures.BONUS_CHEST)
-                    .value().place(level, level.chunkSource.getGenerator(), level.random, levelData.getSpawnPos());
-            }
-
-            levelData.setInitialized(true);
-        }else init=false;
-
-        Util.setSpawnSettings(level,allowSettings.monsters,allowSettings.animals);
-
-        BlockPos spawnPos=level.getSharedSpawnPos();
-
-        loadListener.updateSpawnPos(new ChunkPos(spawnPos));
-        level.setDefaultSpawnPos(spawnPos,level.getSharedSpawnAngle());
-
-        logger().info("World {} loading done!",id.asMinimalString());
-
-        if(!loading.async)postLoadProcess(loadRadius,loadListener);
+        if(!loading.async())postLoadProcess(loadRadius,loadListener);
         else scheduler().runTask(instance(),()->{
             WorldBorder worldBorder=level.getWorldBorder();
             worldBorder.applySettings(levelData.getWorldBorder());
 
             pluginManager().callEvent(new WorldInitEvent(bukkitWorld));
 
-            if(init&&worldProperties.bonusChest){
-                Util.getHolder(Util.getRegistry(level.registryAccess(),Registries.CONFIGURED_FEATURE),MiscOverworldFeatures.BONUS_CHEST)
+            if(init&&worldProperties.bonusChest()){
+                VersionUtil.getHolder(VersionUtil.getRegistry(level.registryAccess(),Registries.CONFIGURED_FEATURE),MiscOverworldFeatures.BONUS_CHEST)
                     .value().place(level, level.chunkSource.getGenerator(), level.random, levelData.getSpawnPos());
             }
             postLoadProcess(loadRadius,loadListener);
@@ -506,32 +536,39 @@ public final class CustomWorld {
     }
 
     private void postLoadProcess(int loadRadius,ChunkProgressListener loadListener){
-        ServerChunkCache chunkCache=level.getChunkSource();
+        try{
+            ServerChunkCache chunkCache=level.getChunkSource();
 
-        if(loading.loadChunks){
-            vanillaServer().forceTicks=true;
-            if(loadRadius>0){
-                int load=Mth.square(ChunkProgressListener.calculateDiameter(loadRadius));
-                while(chunkCache.getTickingGenerated()<load){
-                    try{chunkCache.pollTask();}
-                    catch(Throwable ignore){}
+            if(loading.loadChunks()){
+                vanillaServer().forceTicks=true;
+                if(loadRadius>0){
+                    int load=Mth.square(ChunkProgressListener.calculateDiameter(loadRadius));
+                    while(chunkCache.getTickingGenerated()<load){
+                        try{chunkCache.pollTask();}
+                        catch(Throwable ignore){}
+                    }
                 }
+                vanillaServer().forceTicks=false;
+                logger().info("{} {} chunks loaded.",chunkCache.getTickingGenerated(),id.asString());
             }
-            vanillaServer().forceTicks=false;
-            logger().info("{} chunks loaded.",chunkCache.getTickingGenerated());
+
+            VersionUtil.computeForcedChunks(level.getDataStorage(),chunkCache);
+
+            loadListener.stop();
+            pluginManager().callEvent(new WorldLoadEvent(bukkitWorld));
+        }catch(RuntimeException e){
+            loaded=false;
+            Bukkit.unloadWorld(bukkitWorld,false);
+
+            throw e;
         }
-
-        Util.computeForcedChunks(level.getDataStorage(),chunkCache);
-
-        loadListener.stop();
-        pluginManager().callEvent(new WorldLoadEvent(bukkitWorld));
     }
 
     private void unloadProcess(){
-        if(!loading.save){
+        if(!loading.save()){
             DimensionDataStorage dataSt=level.getDataStorage();
 
-            if(Util.dataVersion<4082){
+            if(VersionUtil.dataVersion<4082){
                 try{
                     ((ExecutorService)ioExecutorField.get(dataSt)).shutdown();
                 }catch(IllegalAccessException e){
@@ -539,11 +576,11 @@ public final class CustomWorld {
                 }
             }
 
-            Util.undirtData(dataSt);
+            VersionUtil.undirtData(dataSt);
         }
-        Bukkit.unloadWorld(bukkitWorld,loading.save);
+        Bukkit.unloadWorld(bukkitWorld,loading.save());
 
-        if(loading.folderDeletion)threadManager.execute(this::folderDeletion);
+        if(loading.folderDeletion())threadManager.execute(this::folderDeletion);
     }
 
     private void folderDeletion(){
@@ -580,16 +617,20 @@ public final class CustomWorld {
     }
 
     private void setSpawn(PrimaryLevelData levelData){
-        BlockPos spawnPos=new BlockPos(spawnPosition.x,spawnPosition.y,spawnPosition.z);
-        levelData.setSpawn(spawnPos,spawnPosition.yaw);
+        BlockPos spawnPos=new BlockPos(spawnPosition.x(),spawnPosition.y(),spawnPosition.z());
+        levelData.setSpawn(spawnPos,spawnPosition.yaw());
+    }
+
+    private boolean checkDuplication(){
+        return Bukkit.getWorld(bukkitId)!=null || Bukkit.getWorld(id)!=null;
     }
 
     @SuppressWarnings("deprecation")
     private @NotNull PrimaryLevelData getPrimaryLevelData(Registry<LevelStem> dimensionRegistry, PrimaryLevelData.SpecialWorldProperty specialProperty) {
         WorldDimensions.Complete dimensionsOp=new WorldDimensions.Complete(dimensionRegistry,specialProperty);
 
-        WorldOptions worldOptions=new WorldOptions(worldProperties.seed==null?WorldOptions.randomSeed():worldProperties.seed,worldProperties.generateStructures,worldProperties.bonusChest);
-        LevelSettings levelSettings=new LevelSettings(bukkitId,worldProperties.defaultGamemode,Bukkit.isHardcore(),worldProperties.difficulty,false,gamerules==null?Util.createGameRules():gamerules.gameRules,worldLoader().dataConfiguration());
+        WorldOptions worldOptions=new WorldOptions(worldProperties.seed()==null?WorldOptions.randomSeed():worldProperties.seed(),worldProperties.generateStructures(),worldProperties.bonusChest());
+        LevelSettings levelSettings=new LevelSettings(bukkitId, FileUtil.mapGameMode(worldProperties.defaultGamemode()),Bukkit.isHardcore(), FileUtil.mapDifficulty(worldProperties.difficulty()),false,gamerules==null? VersionUtil.createGameRules():gamerules.gameRules,worldLoader().dataConfiguration());
 
         return new PrimaryLevelData(levelSettings,worldOptions,dimensionsOp.specialWorldProperty(),Lifecycle.experimental());
     }
@@ -607,7 +648,33 @@ public final class CustomWorld {
         throw new RuntimeException();
     }
 
-    private boolean checkDuplication(){
-        return Bukkit.getWorld(bukkitId)!=null || Bukkit.getWorld(id)!=null;
+    public static boolean isStable(ResourceKey<LevelStem> key, LevelStem data){
+        return (key==LevelStem.OVERWORLD&&isStableOverworld(data))||(key==LevelStem.NETHER&&isStableNether(data))||(key==LevelStem.END&&isStableEnd(data));
+    }
+
+    public static boolean isStableOverworld(LevelStem dimensionOptions) {
+        Holder<DimensionType> holder = dimensionOptions.type();
+        return (
+            holder.is(BuiltinDimensionTypes.OVERWORLD)||
+                holder.is(BuiltinDimensionTypes.OVERWORLD_CAVES)
+        )&&(
+            !(dimensionOptions.generator().getBiomeSource() instanceof MultiNoiseBiomeSource multiNoiseBiomeSource)||
+                multiNoiseBiomeSource.stable(MultiNoiseBiomeSourceParameterLists.OVERWORLD)
+        );
+    }
+
+    public static boolean isStableNether(LevelStem dimensionOptions) {
+        return dimensionOptions.type().is(BuiltinDimensionTypes.NETHER)
+            && dimensionOptions.generator() instanceof NoiseBasedChunkGenerator noiseBasedChunkGenerator
+            && noiseBasedChunkGenerator.stable(NoiseGeneratorSettings.NETHER)
+            && noiseBasedChunkGenerator.getBiomeSource() instanceof MultiNoiseBiomeSource multiNoiseBiomeSource
+            && multiNoiseBiomeSource.stable(MultiNoiseBiomeSourceParameterLists.NETHER);
+    }
+
+    public static boolean isStableEnd(LevelStem dimensionOptions) {
+        return dimensionOptions.type().is(BuiltinDimensionTypes.END)
+            && dimensionOptions.generator() instanceof NoiseBasedChunkGenerator noiseBasedChunkGenerator
+            && noiseBasedChunkGenerator.stable(NoiseGeneratorSettings.END)
+            && noiseBasedChunkGenerator.getBiomeSource() instanceof TheEndBiomeSource;
     }
 }

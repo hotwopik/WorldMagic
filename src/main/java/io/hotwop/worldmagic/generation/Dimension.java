@@ -1,7 +1,8 @@
 package io.hotwop.worldmagic.generation;
 
 import io.hotwop.worldmagic.WorldMagic;
-import io.hotwop.worldmagic.util.Util;
+import io.hotwop.worldmagic.api.DimensionLike;
+import io.hotwop.worldmagic.util.VersionUtil;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
@@ -25,7 +26,7 @@ import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Optional;
 
-public sealed interface Dimension permits Dimension.Reference,Dimension.Inline{
+public sealed interface Dimension extends DimensionLike permits Dimension.Reference,Dimension.Inline{
     LevelStem get();
     ResourceKey<LevelStem> getKey();
 
@@ -33,10 +34,10 @@ public sealed interface Dimension permits Dimension.Reference,Dimension.Inline{
         NamespacedKey id
     ) implements Dimension{
         public ResourceKey<LevelStem> getKey(){
-            return ResourceKey.create(Registries.LEVEL_STEM, Util.createResourceLocation(id));
+            return ResourceKey.create(Registries.LEVEL_STEM, VersionUtil.createResourceLocation(id));
         }
         public LevelStem get() {
-            return Util.registryGet(Registries.LEVEL_STEM,WorldMagic.vanillaServer().registryAccess(),id);
+            return VersionUtil.registryGet(Registries.LEVEL_STEM,WorldMagic.vanillaServer().registryAccess(),id);
         }
     }
 
@@ -48,21 +49,21 @@ public sealed interface Dimension permits Dimension.Reference,Dimension.Inline{
         public static final FlatLevelSource emptyGenerator;
 
         static{
-            Registry<Biome> biomeRegistry= Util.getRegistry(Registries.BIOME);
+            Registry<Biome> biomeRegistry= VersionUtil.getRegistry(Registries.BIOME);
 
             emptyGenerator=new FlatLevelSource(new FlatLevelGeneratorSettings(
                 Optional.empty(),
-                Holder.Reference.createStandAlone(Util.getHolderOwner(biomeRegistry),Biomes.THE_VOID),
+                Holder.Reference.createStandAlone(VersionUtil.getHolderOwner(biomeRegistry),Biomes.THE_VOID),
                 List.of()
             ));
         }
 
         public LevelStem get(){
-            Registry<DimensionType> type= Util.getRegistry(Registries.DIMENSION_TYPE);
-            return new LevelStem(Util.getHolderOrThrow(type,ResourceKey.create(Registries.DIMENSION_TYPE, Util.createResourceLocation(dimensionType))),(generator instanceof GeneratorSettings.Vanilla(ChunkGenerator generatorVan))?generatorVan:emptyGenerator);
+            Registry<DimensionType> type= VersionUtil.getRegistry(Registries.DIMENSION_TYPE);
+            return new LevelStem(VersionUtil.getHolderOrThrow(type,ResourceKey.create(Registries.DIMENSION_TYPE, VersionUtil.createResourceLocation(dimensionType))),(generator instanceof GeneratorSettings.Vanilla(ChunkGenerator generatorVan))?generatorVan:emptyGenerator);
         }
         public ResourceKey<LevelStem> getKey() {
-            Registry<LevelStem> reg= Util.getRegistry(Registries.LEVEL_STEM);
+            Registry<LevelStem> reg= VersionUtil.getRegistry(Registries.LEVEL_STEM);
             ResourceLocation loc=reg.getKey(get());
             if(loc==null)return null;
             return ResourceKey.create(Registries.LEVEL_STEM,loc);
