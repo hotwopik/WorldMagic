@@ -61,8 +61,11 @@ public final class WorldFile{
         public boolean bonusChest=false;
 
         public GameMode defaultGamemode=GameMode.SURVIVAL;
+        public boolean forceDefaultGamemode=false;
 
         public Difficulty difficulty=Difficulty.NORMAL;
+
+        public String requiredPermission;
     }
 
     public Dimension dimension=new Dimension.Reference(NamespacedKey.minecraft("overworld"));

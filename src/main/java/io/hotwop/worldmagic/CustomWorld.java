@@ -196,6 +196,11 @@ public final class CustomWorld implements MagicWorld {
         return level;
     }
 
+    public Location callbackLocation(){
+        if(callbackLocation==null)return Bukkit.getWorld(overworld).getSpawnLocation();
+        return callbackLocation.clone();
+    }
+
     public boolean isForDeletion(){
         return forDeletion;
     }
@@ -249,10 +254,12 @@ public final class CustomWorld implements MagicWorld {
 
         worldProperties=settings.worldProperties()==null?new WorldProperties(
             null,
-            false,
+            true,
             false,
             GameMode.SURVIVAL,
-            Difficulty.NORMAL
+            false,
+            Difficulty.NORMAL,
+            null
         ):settings.worldProperties();
 
         if(!(settings.dimension() instanceof Dimension dim))throw new RuntimeException("Don't try to spoof DimensionLike!");
@@ -321,9 +328,7 @@ public final class CustomWorld implements MagicWorld {
         }else{
             AtomicInteger task=new AtomicInteger(players.size());
 
-            Location loc;
-            if(callbackLocation==null)loc=Bukkit.getWorld(overworld).getSpawnLocation();
-            else loc=callbackLocation;
+            Location loc=callbackLocation();
 
             players.forEach(pl->pl.getBukkitEntity().teleportAsync(loc).thenAccept(done->{
                 if(!done)pl.getBukkitEntity().teleport(loc);

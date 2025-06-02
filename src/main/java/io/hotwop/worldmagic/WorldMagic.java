@@ -3,6 +3,8 @@ package io.hotwop.worldmagic;
 import io.hotwop.worldmagic.api.MagicWorld;
 import io.hotwop.worldmagic.api.settings.CustomWorldSettings;
 import io.hotwop.worldmagic.file.WorldFile;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.WorldLoader;
@@ -11,9 +13,11 @@ import org.bukkit.Bukkit;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Server;
 import org.bukkit.World;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.world.WorldUnloadEvent;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -78,6 +82,8 @@ public final class WorldMagic extends JavaPlugin {
 
     private static final Map<NamespacedKey, WorldFile> worldFiles=new HashMap<>();
     public static @Nullable WorldFile getWorldFile(NamespacedKey id){
+        Objects.requireNonNull(id,"id");
+
         return worldFiles.get(id);
     }
     public static Set<NamespacedKey> getWorldFileIds(){
@@ -86,10 +92,19 @@ public final class WorldMagic extends JavaPlugin {
 
     private static final List<CustomWorld> worlds=new ArrayList<>();
     public static @Nullable CustomWorld getPluginWorld(NamespacedKey id){
+        Objects.requireNonNull(id,"id");
+
         return worlds.stream().filter(wr->wr.id.equals(id)).findAny().orElse(null);
     }
     public static List<CustomWorld> getPluginWorlds(){
         return List.copyOf(worlds);
+    }
+
+    public static @Nullable CustomWorld isPluginWorld(World world){
+        Objects.requireNonNull(world,"world");
+
+        NamespacedKey id=world.getKey();
+        return worlds.stream().filter(wr->wr.loaded()&&wr.id.equals(id)).findAny().orElse(null);
     }
 
     private static final List<CustomWorld> startups=new ArrayList<>();
@@ -341,6 +356,25 @@ public final class WorldMagic extends JavaPlugin {
 
                     cw.unload();
                 });
+        }
+
+        @EventHandler
+        public void worldChange(PlayerChangedWorldEvent e){
+            Player pl=e.getPlayer();
+            World world=pl.getWorld();
+
+            CustomWorld cw=isPluginWorld(world);
+            if(cw!=null){
+                if(cw.worldProperties.requiredPermission()!=null&&!pl.hasPermission("worldmagic.bypass.permissions")&&!pl.hasPermission(cw.worldProperties.requiredPermission())){
+                    pl.teleport(cw.callbackLocation());
+                    pl.sendMessage(Component.text("You haven't permissions to get in this world", NamedTextColor.RED));
+                    return;
+                }
+
+                if(cw.worldProperties.forceDefaultGamemode()&&!pl.hasPermission("worldmagic.bypass.forcegm")){
+                    pl.setGameMode(cw.worldProperties.defaultGamemode());
+                }
+            }
         }
     }
 }

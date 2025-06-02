@@ -21,3 +21,7 @@ permissions:
     description: Command to create worlds from world files
   worldmagic.command.reload:
     description: Command to reload world files
+  worldmagic.bypass.forcegm:
+    description: Bypass forced gamemodes in worlds
+  worldmagic.bypass.permissions:
+    description: Bypass world permissions

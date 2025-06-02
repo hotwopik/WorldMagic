@@ -11,12 +11,16 @@ import org.jetbrains.annotations.Nullable;
  * @param generateStructures Structure generation configuration
  * @param bonusChest Start bonus chest
  * @param defaultGamemode Default world gamemode
+ * @param forceDefaultGamemode Should plugin set default gememode to all players entering the world
  * @param difficulty World difficulty
+ * @param requiredPermission Permission required to enter the world, null to none
  */
 public record WorldProperties(
     @Nullable Long seed,
     boolean generateStructures,
     boolean bonusChest,
     GameMode defaultGamemode,
-    Difficulty difficulty
+    boolean forceDefaultGamemode,
+    Difficulty difficulty,
+    @Nullable String requiredPermission
 ){}

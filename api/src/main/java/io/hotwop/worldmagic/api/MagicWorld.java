@@ -3,6 +3,7 @@ package io.hotwop.worldmagic.api;
 import io.hotwop.worldmagic.api.settings.AllowSettings;
 import io.hotwop.worldmagic.api.settings.CustomWorldSettings;
 import io.hotwop.worldmagic.api.settings.WorldProperties;
+import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
 import org.jetbrains.annotations.Contract;
@@ -60,6 +61,11 @@ public interface MagicWorld{
      * @return world allow settings
      */
     AllowSettings allowSettings();
+
+    /**
+     * @return current callback location
+     */
+    Location callbackLocation();
 
     /**
      * Create CustomWorldSettings based on this world

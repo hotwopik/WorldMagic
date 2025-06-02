@@ -12,6 +12,7 @@ import org.bukkit.GameMode;
 import org.bukkit.GameRule;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.List;
 import java.util.stream.Stream;
 
 public final class FileUtil{
@@ -47,12 +48,12 @@ public final class FileUtil{
     }
 
     public static WorldProperties fromFile(WorldFile.WorldProperties file){
-        return new WorldProperties(file.seed,file.generateStructures,file.bonusChest,file.defaultGamemode,file.difficulty);
+        return new WorldProperties(file.seed,file.generateStructures,file.bonusChest,file.defaultGamemode,file.forceDefaultGamemode,file.difficulty,file.requiredPermission);
     }
 
     public static GameRuleFactory toFactory(GameRuleSet set,boolean override){
-        Stream<GameRuleSet.GameRuleStatement<?>> stream=set.getStatements().stream();
-        GameRules out= VersionUtil.createGameRules();
+        List<GameRuleSet.GameRuleStatement<?>> statements=set.getStatements();
+        GameRules out=VersionUtil.createGameRules();
 
         VersionUtil.visitGameRules(out, new GameRules.GameRuleTypeVisitor() {
             @Override
@@ -60,7 +61,8 @@ public final class FileUtil{
             public <T extends GameRules.Value<T>> void visit(GameRules.@NotNull Key<T> key, GameRules.@NotNull Type<T> type) {
                 String id=key.getId();
 
-                stream.filter(st->st.gameRule().getName().equals(id)).findAny()
+                statements.stream()
+                    .filter(st->st.gameRule().getName().equals(id)).findAny()
                     .ifPresent(st->out.getRule(key).setFrom((T)st.value(),null));
             }
         });

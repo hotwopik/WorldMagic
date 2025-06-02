@@ -4,6 +4,7 @@ import io.hotwop.worldmagic.api.IncorrectImplementationException;
 import io.hotwop.worldmagic.api.MagicWorld;
 import io.hotwop.worldmagic.api.settings.CustomWorldSettings;
 import org.bukkit.NamespacedKey;
+import org.bukkit.World;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
@@ -29,7 +30,7 @@ public final class WorldMagic extends JavaPlugin{
      * Try to find plugin world by it vanilla id
      *
      * @param id world vanilla id
-     * @return Plugin world instance
+     * @return WorldMagic world instance
      */
     @Contract
     public static @Nullable MagicWorld getPluginWorld(@NotNull NamespacedKey id){throw new IncorrectImplementationException();}
@@ -41,6 +42,15 @@ public final class WorldMagic extends JavaPlugin{
      */
     @Contract(pure=true)
     public static @NotNull @Unmodifiable List<MagicWorld> getPluginWorlds(){throw new IncorrectImplementationException();}
+
+    /**
+     * Try to find plugin world instance by bukkit world instance
+     *
+     * @param world bukkit world instance
+     * @return WorldMagic world instance
+     */
+    @Contract
+    public static @Nullable MagicWorld isPluginWorld(@NotNull World world){throw new IncorrectImplementationException();}
 
     /**
      * Try to create plugin world via CustomWorldSettings
