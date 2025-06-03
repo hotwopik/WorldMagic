@@ -1,7 +1,7 @@
 package io.hotwop.worldmagic.generation;
 
 import io.hotwop.worldmagic.util.VersionUtil;
-import io.hotwop.worldmagic.util.dfu.ConfigurateOps;
+import org.spongepowered.configurate.extra.dfu.v7.ConfigurateOps;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.world.level.GameRules;
 import org.checkerframework.checker.nullness.qual.Nullable;

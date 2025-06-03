@@ -3,7 +3,6 @@ package io.hotwop.worldmagic.api;
 import io.hotwop.worldmagic.generation.Dimension;
 import io.hotwop.worldmagic.generation.GeneratorSettings;
 import org.bukkit.NamespacedKey;
-import org.jetbrains.annotations.Contract;
 
 import java.util.Objects;
 

@@ -4,7 +4,7 @@ import com.google.gson.JsonObject;
 import com.mojang.serialization.JsonOps;
 import io.hotwop.worldmagic.WorldMagic;
 import io.hotwop.worldmagic.api.GeneratorLike;
-import io.hotwop.worldmagic.util.dfu.ConfigurateOps;
+import org.spongepowered.configurate.extra.dfu.v7.ConfigurateOps;
 import io.hotwop.worldmagic.util.serializer.EnumSwitchSerializer;
 import net.minecraft.server.dedicated.DedicatedServerProperties;
 import net.minecraft.util.GsonHelper;

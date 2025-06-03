@@ -66,7 +66,7 @@ public final class MoveSubCommand{
     }
 
     private static int move(boolean rotation, Function<World,Location> getLocation, CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
-        CustomWorld world=ctx.getArgument("world", CustomWorld.class);;
+        CustomWorld world=ctx.getArgument("world", CustomWorld.class);
         if(!world.loaded())throw WorldMagicBootstrap.worldNotLoaded.create(world.id.asString());
 
         List<Entity> entities=ctx.getArgument("target", EntitySelectorArgumentResolver.class).resolve(ctx.getSource());

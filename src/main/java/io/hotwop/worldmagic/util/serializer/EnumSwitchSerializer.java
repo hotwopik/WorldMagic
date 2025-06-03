@@ -6,7 +6,6 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 import org.spongepowered.configurate.objectmapping.ObjectMapper;
 import org.spongepowered.configurate.serialize.SerializationException;
 import org.spongepowered.configurate.serialize.TypeSerializer;
-import oshi.util.tuples.Pair;
 
 import javax.annotation.Nullable;
 import java.lang.reflect.AccessFlag;

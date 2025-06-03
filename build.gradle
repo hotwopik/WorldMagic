@@ -19,6 +19,7 @@ dependencies {
     paperweight.paperDevBundle("1.21.5-R0.1-SNAPSHOT")
 
     implementation(project(":api"))
+    implementation(files("libs/extra-dfu7-4.3.0-SNAPSHOT.jar"))
 
     implementation 'org.spongepowered:configurate-yaml:4.2.0'
 }
@@ -43,7 +44,9 @@ tasks {
     jar{
         duplicatesStrategy(DuplicatesStrategy.EXCLUDE)
         dependsOn(project(":api").getTasksByName("assemble",false))
+
         from(zipTree(file('api/build/libs/api-'+version+'.jar')))
+        from(zipTree(file("libs/extra-dfu7-4.3.0-SNAPSHOT.jar")))
     }
     assemble{
         dependsOn(reobfJar)

@@ -13,7 +13,6 @@ import org.bukkit.GameRule;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
-import java.util.stream.Stream;
 
 public final class FileUtil{
     private FileUtil(){}

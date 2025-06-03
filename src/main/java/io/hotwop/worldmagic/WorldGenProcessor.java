@@ -4,7 +4,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.Lifecycle;
 import io.hotwop.worldmagic.util.RegistrationUtil;
 import io.hotwop.worldmagic.util.VersionUtil;
-import io.hotwop.worldmagic.util.dfu.ConfigurateOps;
+import org.spongepowered.configurate.extra.dfu.v7.ConfigurateOps;
 import io.hotwop.worldmagic.util.serializer.NamespacedKeySerializer;
 import io.leangen.geantyref.TypeToken;
 import net.minecraft.core.Registry;
@@ -235,8 +235,7 @@ public final class WorldGenProcessor{
                 Type inner=st.clazz.getType();
                 if(inner.equals(elementClass))return true;
 
-                if(inner instanceof ParameterizedType param&&param.getRawType().equals(elementClass))return true;
-                return false;
+                return inner instanceof ParameterizedType param && param.getRawType().equals(elementClass);
             })
             .map(st->(WorldGenStatement<T>)st)
             .findAny();
