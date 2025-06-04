@@ -66,6 +66,9 @@ public final class WorldFile{
         public Difficulty difficulty=Difficulty.NORMAL;
 
         public String requiredPermission;
+
+        @ConfigRange(min=0)
+        public Integer enterPayment;
     }
 
     public Dimension dimension=new Dimension.Reference(NamespacedKey.minecraft("overworld"));

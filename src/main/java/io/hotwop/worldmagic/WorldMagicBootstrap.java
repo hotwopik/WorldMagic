@@ -3,6 +3,7 @@ package io.hotwop.worldmagic;
 import com.mojang.brigadier.arguments.FloatArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
+import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import io.hotwop.worldmagic.command.*;
 import io.hotwop.worldmagic.file.WorldFile;
@@ -76,22 +77,12 @@ public final class WorldMagicBootstrap implements PluginBootstrap{
     public static final DynamicCommandExceptionType worldCreateError=new DynamicCommandExceptionType(obj->Component.literal("Error to create world: "+obj));
     public static final DynamicCommandExceptionType worldDeleteException=new DynamicCommandExceptionType(obj->Component.literal("Error to delete world: "+obj));
 
+    public static final SimpleCommandExceptionType noVaultException=new SimpleCommandExceptionType(Component.literal("Error: Vault isn't enabled"));
+
     private static final String[] globalPermissionSet={
-        "worldmagic.command",
+        "worldmagic.command.*",
         "worldmagic.command.world",
         "worldmagic.command.create",
-        "worldmagic.command.reload"
-    };
-    private static final String[] worldPermissionSet={
-        "worldmagic.command",
-        "worldmagic.command.world"
-    };
-    private static final String[] createPermissionSet={
-        "worldmagic.command",
-        "worldmagic.command.create"
-    };
-    private static final String[] reloadPermissionSet={
-        "worldmagic.command",
         "worldmagic.command.reload"
     };
 
@@ -99,7 +90,7 @@ public final class WorldMagicBootstrap implements PluginBootstrap{
         return Commands.literal("worldmagic")
             .requires(ctx-> hasOneOfPermission(ctx.getSender(),globalPermissionSet))
             .then(Commands.literal("world")
-                .requires(ctx-> hasOneOfPermission(ctx.getSender(),worldPermissionSet))
+                .requires(ctx->ctx.getSender().hasPermission("worldmagic.command.world"))
                 .then(Commands.argument("world",CustomWorldArgument.instance)
                     .then(Commands.literal("load").executes(ctx->{
                         CustomWorld world=ctx.getArgument("world",CustomWorld.class);
@@ -296,7 +287,7 @@ public final class WorldMagicBootstrap implements PluginBootstrap{
                 )
             )
             .then(Commands.literal("create")
-                .requires(ctx-> hasOneOfPermission(ctx.getSender(),createPermissionSet))
+                .requires(ctx->ctx.getSender().hasPermission("worldmagic.command.create"))
                 .then(Commands.argument("prototype",WorldFileArgument.instance).then(Commands.argument("id",ArgumentTypes.namespacedKey())
                     .executes(ctx->{
                         WorldFile file=ctx.getArgument("prototype", WorldFile.class);
@@ -347,13 +338,30 @@ public final class WorldMagicBootstrap implements PluginBootstrap{
                 ))
             )
             .then(Commands.literal("reload")
-                .requires(ctx-> hasOneOfPermission(ctx.getSender(),reloadPermissionSet))
+                .requires(ctx->ctx.getSender().hasPermission("worldmagic.command.reload"))
                 .executes(ctx->{
-                    ctx.getSource().getSender().sendMessage("Reloading world files...");
+                    ctx.getSource().getSender().sendMessage("Reloading world files and config...");
 
-                    new Thread(()->WorldMagic.instance().loadWorldFiles()).start();
+                    new Thread(()->{
+                        WorldMagic wm=WorldMagic.instance();
+
+                        wm.loadConfig();
+                        wm.loadWorldFiles();
+                    }).start();
                     return 1;
                 })
+                .then(Commands.literal("economy")
+                    .executes(ctx->{
+                        if(WorldMagic.pluginManager().isPluginEnabled("Vault")){
+                            ctx.getSource().getSender().sendMessage("Reloading economy...");
+
+                            WorldMagic.instance().loadVault();
+
+                            return 1;
+                        }
+                        throw noVaultException.create();
+                    })
+                )
             )
             .build();
     }

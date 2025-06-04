@@ -3,10 +3,15 @@ package io.hotwop.worldmagic;
 import io.hotwop.worldmagic.api.MagicWorld;
 import io.hotwop.worldmagic.api.settings.CustomWorldSettings;
 import io.hotwop.worldmagic.file.WorldFile;
+import io.hotwop.worldmagic.integration.VaultIntegration;
 import io.hotwop.worldmagic.integration.papi.Placeholders;
+import io.hotwop.worldmagic.util.serializer.ComponentSerializer;
+import io.hotwop.worldmagic.util.serializer.NamespacedKeySerializer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.minimessage.tag.Tag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.WorldLoader;
 import net.minecraft.server.dedicated.DedicatedServer;
@@ -19,14 +24,18 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.world.WorldUnloadEvent;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitScheduler;
 import org.jetbrains.annotations.Nullable;
+import org.spigotmc.event.player.PlayerSpawnLocationEvent;
 import org.spongepowered.configurate.CommentedConfigurationNode;
 import org.spongepowered.configurate.ConfigurateException;
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
+import org.spongepowered.configurate.yaml.NodeStyle;
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 
 import java.io.File;
@@ -46,6 +55,7 @@ public final class WorldMagic extends JavaPlugin {
     private static WorldMagic instance;
 
     private static Path worldsPath;
+    private static Path configPath;
     private static Path dimensionTypesPath;
     private static Path worldGenPath;
 
@@ -60,6 +70,9 @@ public final class WorldMagic extends JavaPlugin {
     private static DedicatedServer vanillaServer;
     private static PluginManager pluginManager;
     private static BukkitScheduler scheduler;
+
+    private static Config config;
+    private static boolean vaultEnabled=false;
 
     private static boolean loaded=false;
 
@@ -127,6 +140,8 @@ public final class WorldMagic extends JavaPlugin {
         dataFolder.mkdirs();
         Path dataFolderPath=dataFolder.toPath();
 
+        configPath=dataFolderPath.resolve("config.yml");
+
         worldsPath=dataFolderPath.resolve("worlds");
         worldsPath.toFile().mkdir();
 
@@ -135,6 +150,14 @@ public final class WorldMagic extends JavaPlugin {
 
         worldGenPath=dataFolderPath.resolve("worldgen");
         worldGenPath.toFile().mkdir();
+
+        try{
+            loadConfig();
+        }catch(RuntimeException e){
+            logger.error(e.getMessage());
+            pluginManager.disablePlugin(this);
+            return;
+        }
 
         WorldGenProcessor.loadWorldGen();
         WorldGenProcessor.loadDimensionTypes();
@@ -160,6 +183,7 @@ public final class WorldMagic extends JavaPlugin {
     @Override
     public void onEnable(){
         if(pluginManager.isPluginEnabled("PlaceholderAPI"))new Placeholders().register();
+        if(pluginManager.isPluginEnabled("Vault"))loadVault();
 
         logger.info("Loading worlds...");
         startups.forEach(wr->{
@@ -238,6 +262,41 @@ public final class WorldMagic extends JavaPlugin {
             logger.warn("Error to load world files due ID duplication: {}",builder);
         });
         logger.info("World files loaded");
+    }
+
+    public void loadVault(){
+        VaultIntegration.loadEconomy();
+        vaultEnabled=VaultIntegration.economy()!=null;
+    }
+
+    public void loadConfig(){
+        logger.info("Loading config...");
+
+        YamlConfigurationLoader loader=createConfigLoader(configPath);
+        File configFile=configPath.toFile();
+
+        if(configFile.isDirectory())throw new RuntimeException("Config file is directory");
+
+        if(configFile.exists()){
+            try{
+                CommentedConfigurationNode node=loader.load();
+                config=node.get(Config.class);
+            }catch(ConfigurateException e){
+                throw new RuntimeException("Config loading error "+e.getMessage());
+            }
+        }else{
+            config=new Config();
+            CommentedConfigurationNode node=loader.createNode();
+
+            try{
+                node.set(config);
+                loader.save(node);
+            }catch(ConfigurateException e){
+                throw new RuntimeException("Config default file creation error "+e.getMessage());
+            }
+        }
+
+        logger.info("Config loaded");
     }
 
     @Override
@@ -341,6 +400,28 @@ public final class WorldMagic extends JavaPlugin {
         else worlds.remove(world);
     }
 
+    @ConfigSerializable
+    public static final class Config{
+        public NamespacedKey spawnWorld=null;
+        public Component noPermissionMessage=Component.text("You haven't permissions to get in this world",NamedTextColor.RED);
+        public Component haventToPayMessage=Component.text("You haven't to pay for entrance in this world",NamedTextColor.RED);
+        public String worldWithdrawMessage="<yellow><cost><green> payed for world entrance.";
+    }
+
+    public static YamlConfigurationLoader createConfigLoader(Path path){
+        return YamlConfigurationLoader.builder()
+            .path(path)
+            .indent(2)
+            .nodeStyle(NodeStyle.BLOCK)
+            .defaultOptions(opts->opts
+                .serializers(ser->ser
+                    .register(NamespacedKeySerializer.instance)
+                    .register(ComponentSerializer.instance)
+                )
+            )
+            .build();
+    }
+
     public static final class EventListener implements Listener {
         private EventListener(){}
 
@@ -369,15 +450,73 @@ public final class WorldMagic extends JavaPlugin {
 
             CustomWorld cw=isPluginWorld(world);
             if(cw!=null){
-                if(cw.worldProperties.requiredPermission()!=null&&!pl.hasPermission("worldmagic.bypass.permissions")&&!pl.hasPermission(cw.worldProperties.requiredPermission())){
+                if(
+                    cw.worldProperties.requiredPermission()!=null&&
+                    !pl.hasPermission("worldmagic.bypass.permissions")&&
+                    !pl.hasPermission(cw.worldProperties.requiredPermission())
+                ){
                     pl.teleport(cw.callbackLocation());
-                    pl.sendMessage(Component.text("You haven't permissions to get in this world", NamedTextColor.RED));
+                    if(config.noPermissionMessage!=null)pl.sendMessage(config.noPermissionMessage);
                     return;
                 }
 
-                if(cw.worldProperties.forceDefaultGamemode()&&!pl.hasPermission("worldmagic.bypass.forcegm")){
+                if(
+                    vaultEnabled&&
+                    cw.worldProperties.enterPayment()!=null&&
+                    cw.worldProperties.enterPayment()>0&&
+                    !pl.hasPermission("worldmagic.bypass.payment")
+                ){
+                    if(VaultIntegration.economy().has(pl,cw.worldProperties.enterPayment())){
+                        VaultIntegration.economy().withdrawPlayer(pl,cw.worldProperties.enterPayment());
+
+                        if(config.worldWithdrawMessage!=null){
+                            MiniMessage compiler=MiniMessage.builder()
+                                .editTags(tags->tags.tag("cost",Tag.inserting(Component.text(cw.worldProperties.enterPayment()))))
+                                .build();
+
+                            pl.sendMessage(compiler.deserialize(config.worldWithdrawMessage));
+                        }
+                    }else{
+                        pl.teleport(cw.callbackLocation());
+                        if(config.haventToPayMessage!=null)pl.sendMessage(config.haventToPayMessage);
+                        return;
+                    }
+                }
+
+                if(
+                    cw.worldProperties.forceDefaultGamemode()&&
+                    !pl.hasPermission("worldmagic.bypass.forcegm")
+                ){
                     pl.setGameMode(cw.worldProperties.defaultGamemode());
                 }
+            }
+        }
+
+        private static final List<Player> forSpawn=new ArrayList<>();
+
+        @EventHandler
+        public void playerJoin(PlayerJoinEvent e){
+            forSpawn.remove(e.getPlayer());
+        }
+
+        @EventHandler
+        public void playerLogin(PlayerLoginEvent e){
+            Player pl=e.getPlayer();
+            if(!pl.hasPlayedBefore())forSpawn.add(pl);
+        }
+
+        @EventHandler
+        public void playerSpawn(PlayerSpawnLocationEvent e){
+            Player pl=e.getPlayer();
+
+            if(forSpawn.contains(pl)&&config.spawnWorld!=null){
+                World world=Bukkit.getWorld(config.spawnWorld);
+                if(world==null){
+                    logger.error("Error to setup player spawn, unknown world: {}", config.spawnWorld.asString());
+                    return;
+                }
+
+                e.setSpawnLocation(world.getSpawnLocation());
             }
         }
     }

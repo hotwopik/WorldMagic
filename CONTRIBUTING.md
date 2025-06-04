@@ -15,6 +15,6 @@ Issue requesting guide:
 
 ## Feature request
 
-If you creating feature request, please make sure that\
+If you're creating feature request, please make sure that\
 your feature is resolvable in this scope and doesn't create problems\
 with other plugins or minecraft itself

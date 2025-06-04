@@ -13,21 +13,41 @@ dependencies:
     PlaceholderAPI:
       load: BEFORE
       required: false
+    Vault:
+      load: BEFORE
+      required: false
 
 permissions:
-  worldmagic.command:
+  worldmagic.*:
+    description: WorldMagic admin permission
+    children:
+      - worldmagic.command.*
+      - worldmagic.bypass.*
+
+  worldmagic.command.*:
     description: WorldMagic command permission
     children:
       - worldmagic.command.world
       - worldmagic.command.create
       - worldmagic.command.reload
+
   worldmagic.command.world:
     description: Command to manage worlds
   worldmagic.command.create:
     description: Command to create worlds from world files
   worldmagic.command.reload:
     description: Command to reload world files
+
+  worldmagic.bypass.*:
+    description: Bypass all
+    children:
+      - worldmagic.bypass.forcegm
+      - worldmagic.bypass.permissions
+      - worldmagic.bypass.payment
+
   worldmagic.bypass.forcegm:
     description: Bypass forced gamemodes in worlds
   worldmagic.bypass.permissions:
     description: Bypass world permissions
+  worldmagic.bypass.payment:
+    description: Bypass world payment

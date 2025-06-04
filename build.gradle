@@ -17,6 +17,10 @@ repositories {
         name = "papi-repo"
         url = "https://repo.extendedclip.com/content/repositories/placeholderapi/"
     }
+    maven {
+        name = 'vault-repo'
+        url = 'https://jitpack.io'
+    }
 }
 
 dependencies {
@@ -27,18 +31,13 @@ dependencies {
 
     implementation 'org.spongepowered:configurate-yaml:4.2.0'
     compileOnly 'me.clip:placeholderapi:2.11.6'
-}
-
-var pluginDependencies=runPaper.downloadPluginsSpec{
-    hangar('PlaceholderAPI','2.11.6')
+    compileOnly 'com.github.MilkBowl:VaultAPI:1.7.1'
 }
 
 ["1.21","1.21.1","1.21.3","1.21.4","1.21.5"].each {vers->
     tasks.register("runServer$vers"){
         group("run paper")
         dependsOn(runServer{
-            downloadPlugins.from(pluginDependencies)
-
             runDirectory(file("run/$vers"))
             minecraftVersion(vers)
         })
@@ -49,8 +48,6 @@ project(":api").version=version
 
 tasks {
     runServer{
-        downloadPlugins.from(pluginDependencies)
-
         runDirectory(file("run/1.20.6"))
         minecraftVersion("1.20.6")
     }

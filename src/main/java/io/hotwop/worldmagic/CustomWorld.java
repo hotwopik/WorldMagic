@@ -259,6 +259,7 @@ public final class CustomWorld implements MagicWorld {
             GameMode.SURVIVAL,
             false,
             Difficulty.NORMAL,
+            null,
             null
         ):settings.worldProperties();
 

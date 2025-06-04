@@ -3,6 +3,7 @@ package io.hotwop.worldmagic.api.settings;
 import org.bukkit.Difficulty;
 import org.bukkit.GameMode;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.Range;
 
 /**
  * Some world properties
@@ -14,6 +15,7 @@ import org.jetbrains.annotations.Nullable;
  * @param forceDefaultGamemode Should plugin set default gememode to all players entering the world
  * @param difficulty World difficulty
  * @param requiredPermission Permission required to enter the world, null to none
+ * @param enterPayment Cost of world entrance
  */
 public record WorldProperties(
     @Nullable Long seed,
@@ -22,5 +24,6 @@ public record WorldProperties(
     GameMode defaultGamemode,
     boolean forceDefaultGamemode,
     Difficulty difficulty,
-    @Nullable String requiredPermission
+    @Nullable String requiredPermission,
+    @Nullable @Range(from=0,to=Integer.MAX_VALUE) Integer enterPayment
 ){}
