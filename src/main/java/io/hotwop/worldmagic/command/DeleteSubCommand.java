@@ -28,6 +28,8 @@ public final class DeleteSubCommand{
             .executes(ctx->{
                 CustomWorld world=ctx.getArgument("world", CustomWorld.class);
 
+                if(!world.loading.loadControl())throw WorldMagicBootstrap.notLoadControlWorldException.create(world.id.asString());
+
                 switch(ctx.getSource().getSender()){
                     case Player pl->{
                         pl.sendMessage(Component

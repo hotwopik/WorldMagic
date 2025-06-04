@@ -1,8 +1,14 @@
 plugins {
     id("java")
+    id("maven-publish")
 }
 
 group="io.hotwop"
+
+java {
+    withJavadocJar()
+    withSourcesJar()
+}
 
 repositories {
     mavenCentral()
@@ -14,4 +20,38 @@ repositories {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.20.6-R0.1-SNAPSHOT")
+}
+
+publishing{
+    publications{
+        api(MavenPublication){
+            groupId = 'io.hotwop.worldmagic'
+            artifactId = 'worldmagic-api'
+            version = rootProject.version
+
+            pom{
+                name="WorldMagic API"
+                description="WorldMagic paper plugin API"
+                licenses {
+                    license{
+                        name = 'MIT License'
+                        url = 'https://opensource.org/license/mit'
+                    }
+                }
+                developers {
+                    developer {
+                        id = 'hotwop'
+                    }
+                }
+            }
+
+            from components.java
+        }
+    }
+    repositories{
+        maven {
+            name = "papermc"
+            url = "https://repo.papermc.io/repository/maven-public/"
+        }
+    }
 }
