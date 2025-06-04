@@ -8,6 +8,12 @@ bootstrapper: io.hotwop.worldmagic.WorldMagicBootstrap
 
 api-version: '1.20.6'
 
+dependencies:
+  server:
+    PlaceholderAPI:
+      load: BEFORE
+      required: false
+
 permissions:
   worldmagic.command:
     description: WorldMagic command permission

@@ -3,6 +3,7 @@ package io.hotwop.worldmagic;
 import io.hotwop.worldmagic.api.MagicWorld;
 import io.hotwop.worldmagic.api.settings.CustomWorldSettings;
 import io.hotwop.worldmagic.file.WorldFile;
+import io.hotwop.worldmagic.integration.papi.Placeholders;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger;
@@ -25,6 +26,7 @@ import org.bukkit.scheduler.BukkitScheduler;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.configurate.CommentedConfigurationNode;
 import org.spongepowered.configurate.ConfigurateException;
+import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 
 import java.io.File;
@@ -157,6 +159,8 @@ public final class WorldMagic extends JavaPlugin {
 
     @Override
     public void onEnable(){
+        if(pluginManager.isPluginEnabled("PlaceholderAPI"))new Placeholders().register();
+
         logger.info("Loading worlds...");
         startups.forEach(wr->{
             try{
