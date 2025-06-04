@@ -24,6 +24,7 @@ public final class DeleteSubCommand{
 
     public static LiteralCommandNode<CommandSourceStack> buildNode(){
         return Commands.literal("delete")
+            .requires(ctx->ctx.getSender().hasPermission("worldmagic.command.world.delete"))
             .executes(ctx->{
                 CustomWorld world=ctx.getArgument("world", CustomWorld.class);
 

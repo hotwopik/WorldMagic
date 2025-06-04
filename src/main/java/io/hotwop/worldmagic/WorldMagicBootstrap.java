@@ -92,26 +92,32 @@ public final class WorldMagicBootstrap implements PluginBootstrap{
             .then(Commands.literal("world")
                 .requires(ctx->ctx.getSender().hasPermission("worldmagic.command.world"))
                 .then(Commands.argument("world",CustomWorldArgument.instance)
-                    .then(Commands.literal("load").executes(ctx->{
-                        CustomWorld world=ctx.getArgument("world",CustomWorld.class);
+                    .then(Commands.literal("load")
+                        .requires(ctx->ctx.getSender().hasPermission("worldmagic.command.world.load"))
+                        .executes(ctx->{
+                            CustomWorld world=ctx.getArgument("world",CustomWorld.class);
 
-                        if(!world.loading.loadControl())throw notLoadControlWorldException.create(world.id.asString());
-                        if(world.loaded())throw worldAlreadyLoadedException.create(world.id.asString());
+                            if(!world.loading.loadControl())throw notLoadControlWorldException.create(world.id.asString());
+                            if(world.loaded())throw worldAlreadyLoadedException.create(world.id.asString());
 
-                        world.load();
-                        ctx.getSource().getSender().sendMessage("Loading world...");
-                        return 1;
-                    }))
-                    .then(Commands.literal("unload").executes(ctx->{
-                        CustomWorld world=ctx.getArgument("world", CustomWorld.class);
+                            world.load();
+                            ctx.getSource().getSender().sendMessage("Loading world...");
+                            return 1;
+                        })
+                    )
+                    .then(Commands.literal("unload")
+                        .requires(ctx->ctx.getSender().hasPermission("worldmagic.command.world.load"))
+                        .executes(ctx->{
+                            CustomWorld world=ctx.getArgument("world", CustomWorld.class);
 
-                        if(!world.loading.loadControl())throw notLoadControlWorldException.create(world.id.asString());
-                        if(!world.loaded())throw worldAlreadyUnloadedException.create(world.id.asString());
+                            if(!world.loading.loadControl())throw notLoadControlWorldException.create(world.id.asString());
+                            if(!world.loaded())throw worldAlreadyUnloadedException.create(world.id.asString());
 
-                        world.unload();
-                        ctx.getSource().getSender().sendMessage("Unloading world...");
-                        return 1;
-                    }))
+                            world.unload();
+                            ctx.getSource().getSender().sendMessage("Unloading world...");
+                            return 1;
+                        })
+                    )
                     .then(NodeBuilders.buildGameruleNode("gamerule",
                         (key,type,value,ctx)->{
                             CustomWorld world=ctx.getArgument("world", CustomWorld.class);
