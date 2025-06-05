@@ -18,3 +18,6 @@ Supports paper versions **1.20.6** and above.
 - Worlds without save
 
 ---
+
+## Wiki
+More information about plugin can be founded on the [wiki](https://github.com/hotwopik/WorldMagic/wiki)
