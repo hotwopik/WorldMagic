@@ -15,6 +15,9 @@ import java.util.Map;
 public final class GameRuleSet {
     private final Map<GameRule<?>,Object> map=new HashMap<>();
 
+    /**
+     * Gamerule storage
+     */
     public GameRuleSet(){}
 
     /**
@@ -53,6 +56,13 @@ public final class GameRuleSet {
         return List.copyOf(out);
     }
 
+    /**
+     * Pair gamerule and value
+     *
+     * @param gameRule gamerule
+     * @param value value
+     * @param <T> gamerule type
+     */
     public record GameRuleStatement<T>(
         GameRule<T> gameRule,
         T value

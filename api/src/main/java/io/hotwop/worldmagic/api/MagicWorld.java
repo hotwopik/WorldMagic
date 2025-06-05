@@ -18,23 +18,28 @@ import java.nio.file.Path;
 @ThreadSafe
 public interface MagicWorld{
     /**
+     * Get world id
      * @return vanilla world id
      */
     NamespacedKey id();
     /**
+     * Get world bukkit id
      * @return bukkit world id
      */
     String bukkitId();
     /**
+     * Get world path
      * @return relative folder path
      */
     String folder();
 
     /**
+     * Get world path object
      * @return folder path object
      */
     Path folderPath();
     /**
+     * Get world load state
      * @return whether world loaded or not
      */
     boolean loaded();
@@ -50,19 +55,23 @@ public interface MagicWorld{
     boolean isForDeletion();
 
     /**
+     * Get world dimension
      * @return World dimension settings
      */
     DimensionLike dimension();
     /**
+     * Get world properties
      * @return world properties
      */
     WorldProperties worldProperties();
     /**
+     * Get allow settings
      * @return world allow settings
      */
     AllowSettings allowSettings();
 
     /**
+     * Get callback location
      * @return current callback location
      */
     Location callbackLocation();

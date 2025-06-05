@@ -80,6 +80,7 @@ public final class CustomWorldSettings{
     }
 
     /**
+     * Get allow settings
      * @return What allowed in the world
      */
     public @Nullable AllowSettings allowSettings(){
@@ -98,6 +99,7 @@ public final class CustomWorldSettings{
     }
 
     /**
+     * Get loading settings
      * @return Loading settings
      */
     public @Nullable Loading loadingSettings(){
@@ -116,6 +118,7 @@ public final class CustomWorldSettings{
     }
 
     /**
+     * Get world properties
      * @return world properties
      */
     public @Nullable WorldProperties worldProperties(){
@@ -134,6 +137,7 @@ public final class CustomWorldSettings{
     }
 
     /**
+     * Get world border settings
      * @return world border settings
      */
     public @Nullable WorldBorderSettings worldBorderSettings(){
@@ -152,6 +156,7 @@ public final class CustomWorldSettings{
     }
 
     /**
+     * Get world spawn settings
      * @return spawn settings
      */
     public @Nullable SpawnPosition spawn(){
@@ -178,7 +183,8 @@ public final class CustomWorldSettings{
     }
 
     /**
-     * @return GameRule override setting
+     * Get gamerule override
+     * @return gamerule override setting
      */
     public boolean isGameRuleOverride(){
         return gameRuleOverride;
@@ -196,6 +202,7 @@ public final class CustomWorldSettings{
     public void setCallbackLocation(Location location){throw new IncorrectImplementationException();}
 
     /**
+     * Get callback location
      * @return callback location or null if it's overworld spawn
      */
     public @Nullable Location callbackLocation(){
@@ -214,6 +221,7 @@ public final class CustomWorldSettings{
     }
 
     /**
+     * Get dimension settings
      * @return dimension settings
      */
     public DimensionLike dimension(){

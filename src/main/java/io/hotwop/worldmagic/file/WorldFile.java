@@ -54,6 +54,8 @@ public final class WorldFile{
 
     @ConfigSerializable
     public static final class WorldProperties{
+        public boolean override=true;
+
         public Long seed;
 
         public boolean generateStructures=true;
@@ -79,7 +81,6 @@ public final class WorldFile{
     public static final class Loading{
         public boolean async=false;
         public boolean startup=true;
-        public boolean override=true;
         public boolean loadChunks=true;
         public boolean save=true;
         public boolean folderDeletion=false;

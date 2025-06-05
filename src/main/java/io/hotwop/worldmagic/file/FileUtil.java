@@ -35,7 +35,7 @@ public final class FileUtil{
     }
 
     public static Loading fromFile(WorldFile.Loading file){
-        return new Loading(file.async,file.override,file.loadChunks,file.save,file.folderDeletion,file.loadControl);
+        return new Loading(file.async,file.loadChunks,file.save,file.folderDeletion,file.loadControl);
     }
 
     public static SpawnPosition fromFile(WorldFile.SpawnPosition file){
@@ -47,7 +47,7 @@ public final class FileUtil{
     }
 
     public static WorldProperties fromFile(WorldFile.WorldProperties file){
-        return new WorldProperties(file.seed,file.generateStructures,file.bonusChest,file.defaultGamemode,file.forceDefaultGamemode,file.difficulty,file.requiredPermission,file.enterPayment);
+        return new WorldProperties(file.override,file.seed,file.generateStructures,file.bonusChest,file.defaultGamemode,file.forceDefaultGamemode,file.difficulty,file.requiredPermission,file.enterPayment);
     }
 
     public static GameRuleFactory toFactory(GameRuleSet set,boolean override){

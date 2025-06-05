@@ -4,7 +4,6 @@ package io.hotwop.worldmagic.api.settings;
  * Setting up loading settings
  *
  * @param async Enable async loading mode
- * @param override Should java world settings override world settings in files
  * @param loadChunks Should plugin load spawn chunks immediately(Chunks still loads in some ticks after world load)
  * @param save Should plugin save world
  * @param folderDeletion Should plugin delete world folder after unload
@@ -12,7 +11,6 @@ package io.hotwop.worldmagic.api.settings;
  */
 public record Loading(
     boolean async,
-    boolean override,
     boolean loadChunks,
     boolean save,
     boolean folderDeletion,

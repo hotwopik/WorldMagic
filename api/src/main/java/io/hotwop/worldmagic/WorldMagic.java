@@ -13,15 +13,22 @@ import org.jetbrains.annotations.Unmodifiable;
 
 import java.util.List;
 
+/**
+ * Main plugin class
+ */
 public final class WorldMagic extends JavaPlugin{
+    private WorldMagic(){}
+
     /**
      * Get plugin instance
+     * @return plgugin instance
      */
     @Contract(pure=true)
     public static WorldMagic instance(){throw new IncorrectImplementationException();}
 
     /**
-     * Whether plugin finish enabling state or not
+     * Get plugin load state
+     * @return whether plugin finish enabling state or not
      */
     @Contract(pure=true)
     public static boolean loaded(){throw new IncorrectImplementationException();}

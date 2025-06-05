@@ -8,6 +8,7 @@ import org.jetbrains.annotations.Range;
 /**
  * Some world properties
  *
+ * @param override Should plugin override already existing world properties
  * @param seed Generation seed, null to random
  * @param generateStructures Structure generation configuration
  * @param bonusChest Start bonus chest
@@ -18,6 +19,7 @@ import org.jetbrains.annotations.Range;
  * @param enterPayment Cost of world entrance
  */
 public record WorldProperties(
+    boolean override,
     @Nullable Long seed,
     boolean generateStructures,
     boolean bonusChest,

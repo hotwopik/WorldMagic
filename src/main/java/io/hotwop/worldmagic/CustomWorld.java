@@ -253,6 +253,7 @@ public final class CustomWorld implements MagicWorld {
         folderPath=Bukkit.getWorldContainer().toPath().resolve(this.folder);
 
         worldProperties=settings.worldProperties()==null?new WorldProperties(
+            true,
             null,
             true,
             false,
@@ -268,7 +269,6 @@ public final class CustomWorld implements MagicWorld {
 
         loading=settings.loadingSettings()==null?new Loading(
             false,
-            true,
             true,
             true,
             false,
@@ -427,7 +427,7 @@ public final class CustomWorld implements MagicWorld {
         PrimaryLevelData levelData;
         PrimaryLevelData.SpecialWorldProperty specialProperty;
 
-        if(save==null){
+        if(save==null||worldProperties.override()){
             WorldDimensions worldDimensions= VersionUtil.createWorldDimensions(generator.create());
 
             WritableRegistry<LevelStem> writableDimensionRegistry = new MappedRegistry<>(Registries.LEVEL_STEM, Lifecycle.experimental());
@@ -441,9 +441,28 @@ public final class CustomWorld implements MagicWorld {
             specialProperty=specialWorldProperty(generator);
             levelData=getPrimaryLevelData(dimensionRegistry,specialProperty);
 
-            levelData.setWorldBorder(FileUtil.buildWorldBorder(border));
+            if(save==null||border.override())levelData.setWorldBorder(FileUtil.buildWorldBorder(border));
+
+            if(save!=null){
+                LevelDataAndDimensions saveData=VersionUtil.getLevelDataAndDimension(save,worldLoader().dataConfiguration(), VersionUtil.getRegistry(Registries.LEVEL_STEM));
+                PrimaryLevelData oldLevelData=(PrimaryLevelData)saveData.worldData();
+
+                levelData.setDayTime(oldLevelData.getDayTime());
+
+                levelData.setClearWeatherTime(oldLevelData.getClearWeatherTime());
+                levelData.setRainTime(oldLevelData.getRainTime());
+                levelData.setThunderTime(oldLevelData.getThunderTime());
+                levelData.setGameTime(oldLevelData.getGameTime());
+
+                levelData.setRaining(oldLevelData.isRaining());
+                levelData.setThundering(oldLevelData.isThundering());
+                levelData.setInitialized(oldLevelData.isInitialized());
+
+                if(gamerules==null||!gamerules.override)levelData.getGameRules().assignFrom(oldLevelData.getGameRules(),null);
+                if(!border.override())levelData.setWorldBorder(oldLevelData.getWorldBorder());
+            }
         }else{
-            LevelDataAndDimensions saveData= VersionUtil.getLevelDataAndDimension(save,worldLoader().dataConfiguration(), VersionUtil.getRegistry(Registries.LEVEL_STEM));
+            LevelDataAndDimensions saveData=VersionUtil.getLevelDataAndDimension(save,worldLoader().dataConfiguration(), VersionUtil.getRegistry(Registries.LEVEL_STEM));
 
             dimensionRegistry=saveData.dimensions().dimensions();
             levelData=(PrimaryLevelData)saveData.worldData();
@@ -473,7 +492,7 @@ public final class CustomWorld implements MagicWorld {
             stem,
             loadListener,
             specialProperty==PrimaryLevelData.SpecialWorldProperty.DEBUG,
-            BiomeManager.obfuscateSeed(loading.override()&&worldProperties.seed()!=null?worldProperties.seed():levelData.worldGenOptions().seed()),
+            BiomeManager.obfuscateSeed(worldProperties.override()&&worldProperties.seed()!=null?worldProperties.seed():levelData.worldGenOptions().seed()),
             List.of(new PhantomSpawner(),new PatrolSpawner(),new CatSpawner(),new VillageSiege(),new WanderingTraderSpawner(levelData)),
             true,
             vanillaServer().overworld().getRandomSequences(),
