@@ -484,32 +484,19 @@ public final class WorldMagic extends JavaPlugin {
                 }
 
                 if(
-                    cw.worldProperties.forceDefaultGamemode()&&
+                    cw.worldProperties.forceGamemode()!=null&&
                     !pl.hasPermission("worldmagic.bypass.forcegm")
                 ){
-                    pl.setGameMode(cw.worldProperties.defaultGamemode());
+                    pl.setGameMode(cw.worldProperties.forceGamemode());
                 }
             }
-        }
-
-        private static final List<Player> forSpawn=new ArrayList<>();
-
-        @EventHandler
-        public void playerJoin(PlayerJoinEvent e){
-            forSpawn.remove(e.getPlayer());
-        }
-
-        @EventHandler
-        public void playerLogin(PlayerLoginEvent e){
-            Player pl=e.getPlayer();
-            if(!pl.hasPlayedBefore())forSpawn.add(pl);
         }
 
         @EventHandler
         public void playerSpawn(PlayerSpawnLocationEvent e){
             Player pl=e.getPlayer();
 
-            if(forSpawn.contains(pl)&&config.spawnWorld!=null){
+            if(!pl.hasPlayedBefore()&&config.spawnWorld!=null){
                 World world=Bukkit.getWorld(config.spawnWorld);
                 if(world==null){
                     logger.error("Error to setup player spawn, unknown world: {}", config.spawnWorld.asString());

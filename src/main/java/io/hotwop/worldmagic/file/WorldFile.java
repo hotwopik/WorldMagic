@@ -1,12 +1,12 @@
 package io.hotwop.worldmagic.file;
 
+import io.hotwop.worldmagic.api.LocationResolver;
 import io.hotwop.worldmagic.generation.Dimension;
 import io.hotwop.worldmagic.generation.GameRuleFactory;
 import io.hotwop.worldmagic.generation.GeneratorSettings;
 import io.hotwop.worldmagic.util.serializer.*;
 import org.bukkit.Difficulty;
 import org.bukkit.GameMode;
-import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 import org.spongepowered.configurate.objectmapping.ObjectMapper;
@@ -25,7 +25,7 @@ public final class WorldFile{
     public static final TypeSerializerCollection serializers=TypeSerializerCollection.builder()
         .register(NamespacedKeySerializer.instance)
         .register(Dimension.class,Dimension.Serializer.instance)
-        .register(Location.class,LocationSerializer.instance)
+        .register(LocationResolver.class,LocationResolverSerializer.instance)
         .register(GameRuleFactory.class,GameRuleFactory.Serializer.instance)
         .registerAll(GeneratorSettings.serializer)
         .registerAnnotatedObjects(objectFactory)
@@ -62,8 +62,7 @@ public final class WorldFile{
 
         public boolean bonusChest=false;
 
-        public GameMode defaultGamemode=GameMode.SURVIVAL;
-        public boolean forceDefaultGamemode=false;
+        public GameMode forceGamemode=null;
 
         public Difficulty difficulty=Difficulty.NORMAL;
 
@@ -89,7 +88,7 @@ public final class WorldFile{
 
     public SpawnPosition spawnPosition=null;
 
-    public Location callbackLocation=null;
+    public LocationResolver callbackLocation=null;
 
     @ConfigSerializable
     public static final class SpawnPosition{

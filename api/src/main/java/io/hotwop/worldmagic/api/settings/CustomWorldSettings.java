@@ -3,6 +3,7 @@ package io.hotwop.worldmagic.api.settings;
 import io.hotwop.worldmagic.api.DimensionLike;
 import io.hotwop.worldmagic.api.GameRuleSet;
 import io.hotwop.worldmagic.api.IncorrectImplementationException;
+import io.hotwop.worldmagic.api.LocationResolver;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.jetbrains.annotations.Contract;
@@ -190,7 +191,7 @@ public final class CustomWorldSettings{
         return gameRuleOverride;
     }
 
-    private Location callbackLocation=null;
+    private LocationResolver callbackLocation=null;
 
     /**
      * Setup location to return players if world unloads
@@ -198,14 +199,17 @@ public final class CustomWorldSettings{
      *
      * @param location callback location
      */
-    @Contract(mutates="this")
-    public void setCallbackLocation(Location location){throw new IncorrectImplementationException();}
+    public void setCallbackLocation(LocationResolver location){
+        Objects.requireNonNull(location);
+
+        this.callbackLocation=location;
+    }
 
     /**
      * Get callback location
      * @return callback location or null if it's overworld spawn
      */
-    public @Nullable Location callbackLocation(){
+    public @Nullable LocationResolver callbackLocation(){
         return callbackLocation;
     }
 

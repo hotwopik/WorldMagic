@@ -2,10 +2,7 @@ package io.hotwop.worldmagic;
 
 import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.Lifecycle;
-import io.hotwop.worldmagic.api.DimensionLike;
-import io.hotwop.worldmagic.api.MagicWorld;
-import io.hotwop.worldmagic.api.WorldAlreadyLoadedException;
-import io.hotwop.worldmagic.api.WorldAlreadyUnloadedException;
+import io.hotwop.worldmagic.api.*;
 import io.hotwop.worldmagic.api.settings.*;
 import io.hotwop.worldmagic.file.WorldFile;
 import io.hotwop.worldmagic.generation.Dimension;
@@ -114,7 +111,7 @@ public final class CustomWorld implements MagicWorld {
     public final Dimension dimension;
     public final Loading loading;
     public final SpawnPosition spawnPosition;
-    public final Location callbackLocation;
+    public final LocationResolver callbackLocation;
     public final AllowSettings allowSettings;
     public final GameRuleFactory gamerules;
     public final WorldBorderSettings border;
@@ -198,7 +195,11 @@ public final class CustomWorld implements MagicWorld {
 
     public Location callbackLocation(){
         if(callbackLocation==null)return Bukkit.getWorld(overworld).getSpawnLocation();
-        return callbackLocation.clone();
+        try{
+            return callbackLocation.resolve();
+        }catch(LocationResolver.ResolveException e){
+            return Bukkit.getWorld(overworld).getSpawnLocation();
+        }
     }
 
     public boolean isForDeletion(){
@@ -230,7 +231,7 @@ public final class CustomWorld implements MagicWorld {
         dimension=file.dimension;
         loading= FileUtil.fromFile(file.loading);
         spawnPosition=file.spawnPosition==null?null:FileUtil.fromFile(file.spawnPosition);
-        callbackLocation=file.callbackLocation==null?null:new ImmutableLocation(file.callbackLocation);
+        callbackLocation=file.callbackLocation;
         allowSettings= FileUtil.fromFile(file.allowSettings);
         gamerules=file.gamerules;
         border=FileUtil.fromFile(file.border);
@@ -257,8 +258,7 @@ public final class CustomWorld implements MagicWorld {
             null,
             true,
             false,
-            GameMode.SURVIVAL,
-            false,
+            null,
             Difficulty.NORMAL,
             null,
             null
@@ -675,7 +675,7 @@ public final class CustomWorld implements MagicWorld {
         WorldDimensions.Complete dimensionsOp=new WorldDimensions.Complete(dimensionRegistry,specialProperty);
 
         WorldOptions worldOptions=new WorldOptions(worldProperties.seed()==null?WorldOptions.randomSeed():worldProperties.seed(),worldProperties.generateStructures(),worldProperties.bonusChest());
-        LevelSettings levelSettings=new LevelSettings(bukkitId, FileUtil.mapGameMode(worldProperties.defaultGamemode()),Bukkit.isHardcore(), FileUtil.mapDifficulty(worldProperties.difficulty()),false,gamerules==null? VersionUtil.createGameRules():gamerules.gameRules,worldLoader().dataConfiguration());
+        LevelSettings levelSettings=new LevelSettings(bukkitId,vanillaServer().getDefaultGameType(),Bukkit.isHardcore(), FileUtil.mapDifficulty(worldProperties.difficulty()),false,gamerules==null? VersionUtil.createGameRules():gamerules.gameRules,worldLoader().dataConfiguration());
 
         return new PrimaryLevelData(levelSettings,worldOptions,dimensionsOp.specialWorldProperty(),Lifecycle.experimental());
     }

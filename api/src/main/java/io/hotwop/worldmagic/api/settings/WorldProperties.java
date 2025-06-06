@@ -12,8 +12,7 @@ import org.jetbrains.annotations.Range;
  * @param seed Generation seed, null to random
  * @param generateStructures Structure generation configuration
  * @param bonusChest Start bonus chest
- * @param defaultGamemode Default world gamemode
- * @param forceDefaultGamemode Should plugin set default gememode to all players entering the world
+ * @param forceGamemode Forced world gamemode
  * @param difficulty World difficulty
  * @param requiredPermission Permission required to enter the world, null to none
  * @param enterPayment Cost of world entrance
@@ -23,8 +22,7 @@ public record WorldProperties(
     @Nullable Long seed,
     boolean generateStructures,
     boolean bonusChest,
-    GameMode defaultGamemode,
-    boolean forceDefaultGamemode,
+    @Nullable GameMode forceGamemode,
     Difficulty difficulty,
     @Nullable String requiredPermission,
     @Nullable @Range(from=0,to=Integer.MAX_VALUE) Integer enterPayment

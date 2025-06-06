@@ -47,7 +47,7 @@ public final class FileUtil{
     }
 
     public static WorldProperties fromFile(WorldFile.WorldProperties file){
-        return new WorldProperties(file.override,file.seed,file.generateStructures,file.bonusChest,file.defaultGamemode,file.forceDefaultGamemode,file.difficulty,file.requiredPermission,file.enterPayment);
+        return new WorldProperties(file.override,file.seed,file.generateStructures,file.bonusChest,file.forceGamemode,file.difficulty,file.requiredPermission,file.enterPayment);
     }
 
     public static GameRuleFactory toFactory(GameRuleSet set,boolean override){
