@@ -122,7 +122,7 @@ public final class RegistrationUtil{
 
             for(ResourceKey<T> id:ids){
                 T value= VersionUtil.registryGet(reg,id.location());
-                Holder.Reference<T> ref= VersionUtil.getHolderOrThrow(reg,id);
+                Holder.Reference<T> ref=VersionUtil.getHolderOrThrow(reg,id,RuntimeException::new);
                 ResourceLocation loc=id.location();
 
                 int index=byId.indexOf(ref);

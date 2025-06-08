@@ -63,7 +63,7 @@ public final class WorldMagicBootstrap implements PluginBootstrap{
         manager.registerEventHandler(LifecycleEvents.COMMANDS,e->{
             Commands commands=e.registrar();
 
-            commands.register(buildCommand(), List.of("wm"));
+            commands.register(buildCommand(commands), List.of("wm"));
         });
     }
 
@@ -86,7 +86,7 @@ public final class WorldMagicBootstrap implements PluginBootstrap{
         "worldmagic.command.reload"
     };
 
-    private LiteralCommandNode<CommandSourceStack> buildCommand(){
+    private LiteralCommandNode<CommandSourceStack> buildCommand(Commands commands){
         return Commands.literal("worldmagic")
             .requires(ctx-> hasOneOfPermission(ctx.getSender(),globalPermissionSet))
             .then(Commands.literal("world")
@@ -145,7 +145,8 @@ public final class WorldMagicBootstrap implements PluginBootstrap{
                             String value=world.level().getGameRules().getRule(key).serialize();
                             ctx.getSource().getSender().sendMessage(PaperAdventure.asAdventure(Component.translatable("commands.gamerule.query",key.getId(),value)));
                             return 1;
-                        }
+                        },
+                        commands
                     ))
                     .then(NodeBuilders.buildDifficultyNode("difficulty",
                         (diff,ctx)->{

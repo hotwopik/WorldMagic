@@ -8,6 +8,7 @@ import io.hotwop.worldmagic.util.versions.MethodVersionWrapper;
 import it.unimi.dsi.fastutil.longs.LongIterator;
 import it.unimi.dsi.fastutil.longs.LongList;
 import net.minecraft.SharedConstants;
+import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.core.*;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
@@ -32,6 +33,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Optional;
 import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
 
 @SuppressWarnings("unchecked")
 public final class VersionUtil {
@@ -61,7 +63,7 @@ public final class VersionUtil {
 
     public static final MethodMapping<GameRules> createGameRulesMapping=new MethodVersionWrapper
         .Builder<GameRules>(GameRules.class,"<init>",null)
-        .allParameterMapping(4082,old->new Object[]{net.minecraft.world.flag.FeatureFlagSet.of()},net.minecraft.world.flag.FeatureFlagSet.class)
+        .allParameterMapping(4082,old->new Object[]{WorldMagic.worldLoader().dataConfiguration().enabledFeatures()},net.minecraft.world.flag.FeatureFlagSet.class)
         .build().createMapping(dataVersion);
 
     public static final MethodMapping<LevelDataAndDimensions> getLevelDataAndDimensions=new MethodVersionWrapper
@@ -169,8 +171,8 @@ public final class VersionUtil {
         return (Holder.Reference<T>)registryGetHolderMapping.invokeWithExecutor(registry, id).orElse(null);
     }
 
-    public static <T> Holder.Reference<T> getHolderOrThrow(Registry<T> registry, ResourceKey<T> id){
-        return (Holder.Reference<T>)registryGetHolderMapping.invokeWithExecutor(registry, id).orElseThrow();
+    public static <T> Holder.Reference<T> getHolderOrThrow(Registry<T> registry, ResourceKey<T> id, Supplier<RuntimeException> err){
+        return (Holder.Reference<T>)registryGetHolderMapping.invokeWithExecutor(registry, id).orElseThrow(err);
     }
 
     public static void undirtData(DimensionDataStorage st){
@@ -198,6 +200,11 @@ public final class VersionUtil {
 
     public static GameRules createGameRules(){
         return createGameRulesMapping.invoke();
+    }
+
+    public static GameRules createGameRulesFromContext(CommandBuildContext ctx){
+        if(dataVersion<4082)return createGameRules();
+        return new GameRules(ctx.enabledFeatures());
     }
 
     public static void visitGameRules(GameRules rules,GameRules.GameRuleTypeVisitor visitor){

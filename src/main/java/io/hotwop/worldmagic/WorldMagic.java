@@ -38,8 +38,10 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 import org.spongepowered.configurate.yaml.NodeStyle;
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
@@ -154,7 +156,7 @@ public final class WorldMagic extends JavaPlugin {
         try{
             loadConfig();
         }catch(RuntimeException e){
-            logger.error(e.getMessage());
+            logger.error(e.toString());
             pluginManager.disablePlugin(this);
             return;
         }
@@ -171,7 +173,7 @@ public final class WorldMagic extends JavaPlugin {
             try{
                 cw=new CustomWorld(file);
             }catch(RuntimeException e){
-                logger().info("Error to build world: {}",e.toString());
+                logger().info("Error to build world {}: {}",file.id.asString(),e.getMessage());
                 return;
             }
 
@@ -190,7 +192,7 @@ public final class WorldMagic extends JavaPlugin {
             try{
                 wr.load();
             }catch(RuntimeException e){
-                logger().error("Error to load world: {}",e.toString());
+                logger().error("Error to load world {}: {}",wr.id.asString(),e.getMessage());
             }
         });
         startups.clear();
@@ -246,7 +248,7 @@ public final class WorldMagic extends JavaPlugin {
                 worldFiles.put(file.id,file);
                 patches.put(file,path);
             }catch(ConfigurateException ex){
-                logger.warn("Error to load world file {}:\n  {}",path.toString(),ex.getMessage());
+                logger.warn("Error to load world file {}:\n  {}",path.toString(),ex.toString());
             }
         });
 
@@ -282,7 +284,7 @@ public final class WorldMagic extends JavaPlugin {
                 CommentedConfigurationNode node=loader.load();
                 config=node.get(Config.class);
             }catch(ConfigurateException e){
-                throw new RuntimeException("Config loading error "+e.getMessage());
+                throw new RuntimeException("Config loading error "+e);
             }
         }else{
             config=new Config();
@@ -292,7 +294,7 @@ public final class WorldMagic extends JavaPlugin {
                 node.set(config);
                 loader.save(node);
             }catch(ConfigurateException e){
-                throw new RuntimeException("Config default file creation error "+e.getMessage());
+                throw new RuntimeException("Config default file creation error "+e);
             }
         }
 
@@ -328,13 +330,13 @@ public final class WorldMagic extends JavaPlugin {
         try{
             world=new CustomWorld(id,bukkitId,folder,file);
         }catch(RuntimeException e){
-            throw new WorldCreationException(e.getMessage(),WorldCreationException.Phase.build);
+            throw new WorldCreationException(e.toString(),WorldCreationException.Phase.build);
         }
 
         try{
             world.load();
         }catch(RuntimeException e){
-            throw new WorldCreationException(e.getMessage(),WorldCreationException.Phase.load);
+            throw new WorldCreationException(e.toString(),WorldCreationException.Phase.load);
         }
 
         worlds.add(world);
@@ -350,13 +352,13 @@ public final class WorldMagic extends JavaPlugin {
         try{
             world=new CustomWorld(settings);
         }catch(RuntimeException e){
-            throw new WorldCreationException(e.getMessage(),WorldCreationException.Phase.build);
+            throw new WorldCreationException(e.toString(),WorldCreationException.Phase.build);
         }
 
         try{
             world.load();
         }catch(RuntimeException e){
-            throw new WorldCreationException(e.getMessage(),WorldCreationException.Phase.load);
+            throw new WorldCreationException(e.toString(),WorldCreationException.Phase.load);
         }
 
         worlds.add(world);
@@ -379,7 +381,7 @@ public final class WorldMagic extends JavaPlugin {
             try{
                 folderPath=Bukkit.getWorldContainer().toPath().resolve(folder);
             }catch(InvalidPathException e){
-                throw new WorldCreationException("invalid path "+e.getMessage(),WorldCreationException.Phase.check);
+                throw new WorldCreationException("invalid path "+e,WorldCreationException.Phase.check);
             }
 
             if(folderPath.toFile().isFile())throw new WorldCreationException("folder "+folder+" already exist as file",WorldCreationException.Phase.check);

@@ -10,6 +10,7 @@ import io.hotwop.worldmagic.util.VersionUtil;
 import io.hotwop.worldmagic.util.Weather;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
+import io.papermc.paper.command.brigadier.PaperCommands;
 import io.papermc.paper.command.brigadier.argument.ArgumentTypes;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.Difficulty;
@@ -23,10 +24,10 @@ import java.util.function.Supplier;
 public final class NodeBuilders{
     private NodeBuilders(){}
 
-    public static LiteralCommandNode<CommandSourceStack> buildGameruleNode(String root, GameruleOperation value, GameruleQuery get) {
+    public static LiteralCommandNode<CommandSourceStack> buildGameruleNode(String root, GameruleOperation value, GameruleQuery get, Commands commands) {
         LiteralArgumentBuilder<CommandSourceStack> builder = Commands.literal(root);
 
-        VersionUtil.visitGameRules(new GameRules.GameRuleTypeVisitor(){
+        VersionUtil.visitGameRules(VersionUtil.createGameRulesFromContext(((PaperCommands)commands).getBuildContext()),new GameRules.GameRuleTypeVisitor(){
             public <T extends GameRules.Value<T>> void visit(GameRules.@NotNull Key<T> key, GameRules.@NotNull Type<T> type) {
                 builder.then(Commands.literal(key.getId())
                     .executes(ctx -> get.consume(key, type, ctx))

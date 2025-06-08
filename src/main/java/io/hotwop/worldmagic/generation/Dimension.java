@@ -60,7 +60,14 @@ public sealed interface Dimension extends DimensionLike permits Dimension.Refere
 
         public LevelStem get(){
             Registry<DimensionType> type= VersionUtil.getRegistry(Registries.DIMENSION_TYPE);
-            return new LevelStem(VersionUtil.getHolderOrThrow(type,ResourceKey.create(Registries.DIMENSION_TYPE, VersionUtil.createResourceLocation(dimensionType))),(generator instanceof GeneratorSettings.Vanilla(ChunkGenerator generatorVan))?generatorVan:emptyGenerator);
+            return new LevelStem(
+                VersionUtil.getHolderOrThrow(type,ResourceKey.create(
+                    Registries.DIMENSION_TYPE,
+                    VersionUtil.createResourceLocation(dimensionType)),
+                    ()->new RuntimeException("Error to get dimension type: "+dimensionType.asString())
+                ),
+                (generator instanceof GeneratorSettings.Vanilla(ChunkGenerator generatorVan))?generatorVan:emptyGenerator
+            );
         }
         public ResourceKey<LevelStem> getKey() {
             Registry<LevelStem> reg= VersionUtil.getRegistry(Registries.LEVEL_STEM);
