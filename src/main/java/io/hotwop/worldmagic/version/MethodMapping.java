@@ -1,4 +1,4 @@
-package io.hotwop.worldmagic.util.versions;
+package io.hotwop.worldmagic.version;
 
 public interface MethodMapping<R> {
     R invoke(Object... params);

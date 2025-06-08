@@ -1,4 +1,4 @@
-package io.hotwop.worldmagic.util.versions;
+package io.hotwop.worldmagic.version;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectRBTreeMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectSortedMap;
@@ -190,15 +190,6 @@ public final class MethodVersionWrapper<R>{
             Map.Entry<Integer,Class<?>[]> entry=parameters.headMap(version).lastEntry();
             if(entry!=null)return entry.getValue();
             return defaultParameters;
-        }
-    }
-
-    private record ResultMapping<R,T>(
-        Class<T> clazz,
-        Function<T,R> conversion
-    ){
-        public R convert(Object obj){
-            return conversion.apply(clazz.cast(obj));
         }
     }
 
