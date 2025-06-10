@@ -110,12 +110,14 @@ public interface MagicWorld{
     /**
      * Run world load process
      * @throws WorldAlreadyLoadedException if world already loaded
+     * @throws WorldLoadException if can't load
      */
     void load();
 
     /**
      * Run world unload process
      * @throws WorldAlreadyUnloadedException if world already unloaded
+     * @throws WorldUnloadException if can't unload
      */
     void unload();
 }

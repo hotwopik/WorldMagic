@@ -305,7 +305,7 @@ public final class CustomWorld implements MagicWorld {
         if(shutdown)return;
 
         if(loaded)throw new WorldAlreadyLoadedException();
-        if(forDeletion)throw new RuntimeException("World for deletion!");
+        if(forDeletion)throw new WorldLoadException("World for deletion!");
 
         loaded=true;
 
@@ -346,15 +346,13 @@ public final class CustomWorld implements MagicWorld {
     @SuppressWarnings("deprecation")
     private void loadProcess(){
         if(checkDuplication()){
-            logger().error("Error to load custom world {}, world with that vanilla id or bukkit id already loaded",id.asString());
             loaded=false;
-            return;
+            throw new WorldLoadException("world with that vanilla id or bukkit id already loaded");
         }
 
         if(folderPath.toFile().isFile()){
-            logger().error("Error to load custom world {}, world \"folder\" is file",id.asString());
             loaded=false;
-            return;
+            throw new WorldLoadException("world \"folder\" already defined as file");
         }
 
         logger().info("Creating world {}",id.asString());
@@ -367,9 +365,8 @@ public final class CustomWorld implements MagicWorld {
         try{
             levelStorage=LevelStorageSource.createDefault(container).validateAndCreateAccess(folderName,dimensionId);
         } catch (ContentValidationException | IOException e) {
-            logger().error("Error to load custom world {}, folder creation error: {}",id.asString(),e.toString());
             loaded=false;
-            return;
+            throw new WorldLoadException("error to start folder session: "+e);
         }
 
         Dynamic<?> save;
@@ -388,25 +385,22 @@ public final class CustomWorld implements MagicWorld {
                 try {
                     save = levelStorage.getDataTagFallback();
                     worldinfo = levelStorage.getSummary(save);
-                } catch (NbtException | ReportedNbtException | IOException ioexception1) {
-                    logger().error("Failed to load world {} data from {}", id.asString(), directory.oldDataFile(), ioexception1);
+                } catch (NbtException | ReportedNbtException | IOException e) {
                     loaded=false;
-                    return;
+                    throw new WorldLoadException("Error to load world data from "+directory.dataFile()+": "+e);
                 }
 
                 levelStorage.restoreLevelDataFromOld();
             }
 
             if (worldinfo.requiresManualConversion()) {
-                logger().warn("World {} must be opened in an older version (like 1.6.4) to be safely converted",id.asString());
                 loaded=false;
-                return;
+                throw new WorldLoadException("World must be opened in an older version (like 1.6.4) to be safely converted");
             }
 
             if (!worldinfo.isCompatible()) {
-                logger().info("World {} was created by an incompatible version.",id.asString());
                 loaded=false;
-                return;
+                throw new WorldLoadException("World was created by an incompatible version");
             }
         } else {
             save = null;
@@ -421,7 +415,7 @@ public final class CustomWorld implements MagicWorld {
         }else if(dimension instanceof Dimension.Inline(NamespacedKey typ,GeneratorSettings gen,String pluginBiomes)){
             generator=gen;
             pluginBiomeProvider=pluginBiomes;
-        }else throw new RuntimeException();
+        }else throw new WorldLoadException("Unexpected exception");
 
         Registry<LevelStem> dimensionRegistry;
         PrimaryLevelData levelData;
@@ -529,7 +523,7 @@ public final class CustomWorld implements MagicWorld {
                     try{
                         vanillaSetSpawn.invoke(null,level,levelData,false,level.isDebug());
                     } catch (IllegalAccessException|InvocationTargetException e) {
-                        throw new RuntimeException(e);
+                        throw new WorldLoadException(e.toString());
                     }
                 }
 
@@ -553,7 +547,7 @@ public final class CustomWorld implements MagicWorld {
             loaded=false;
             Bukkit.unloadWorld(bukkitWorld,false);
 
-            throw e;
+            throw new WorldLoadException(e.toString());
         }
 
         if(!loading.async())postLoadProcess(loadRadius,loadListener);
@@ -572,7 +566,7 @@ public final class CustomWorld implements MagicWorld {
                 loaded=false;
                 Bukkit.unloadWorld(bukkitWorld,false);
 
-                throw e;
+                throw new WorldLoadException(e.toString());
             }
             postLoadProcess(loadRadius,loadListener);
         });
@@ -605,7 +599,7 @@ public final class CustomWorld implements MagicWorld {
             loaded=false;
             Bukkit.unloadWorld(bukkitWorld,false);
 
-            throw e;
+            throw new WorldLoadException(e.toString());
         }
     }
 
@@ -617,13 +611,13 @@ public final class CustomWorld implements MagicWorld {
                 try{
                     ((ExecutorService)ioExecutorField.get(dataSt)).shutdown();
                 }catch(IllegalAccessException e){
-                    throw new RuntimeException(e);
+                    throw new WorldUnloadException(e.toString());
                 }
             }
 
             VersionUtil.undirtData(dataSt);
         }
-        Bukkit.unloadWorld(bukkitWorld,loading.save());
+        if(!Bukkit.unloadWorld(bukkitWorld,loading.save()))throw new WorldUnloadException("Error to unload");
 
         if(loading.folderDeletion())threadManager.execute(this::folderDeletion);
     }
@@ -690,7 +684,7 @@ public final class CustomWorld implements MagicWorld {
             else return PrimaryLevelData.SpecialWorldProperty.NONE;
         }
 
-        throw new RuntimeException();
+        throw new WorldLoadException("Unexpected exception");
     }
 
     public static boolean isStable(ResourceKey<LevelStem> key, LevelStem data){

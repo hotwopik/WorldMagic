@@ -17,7 +17,6 @@ import net.minecraft.server.WorldLoader;
 import net.minecraft.server.dedicated.DedicatedServerProperties;
 import net.minecraft.server.level.ServerChunkCache;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.flag.FeatureFlagSet;
 import net.minecraft.world.level.*;
 import net.minecraft.world.level.dimension.LevelStem;
 import net.minecraft.world.level.levelgen.WorldDimensions;
@@ -212,19 +211,6 @@ public final class VersionUtil {
 
         if(dataVersion<4082)executor=null;
         else executor=rules;
-
-        try{
-            gameRuleVisitor.invoke(executor,visitor);
-        }catch(IllegalAccessException|InvocationTargetException e){
-            throw new RuntimeException(e);
-        }
-    }
-
-    public static void visitGameRules(GameRules.GameRuleTypeVisitor visitor){
-        Object executor;
-
-        if(dataVersion<4082)executor=null;
-        else executor=new GameRules(FeatureFlagSet.of());
 
         try{
             gameRuleVisitor.invoke(executor,visitor);
