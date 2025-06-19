@@ -3,11 +3,13 @@ package io.hotwop.worldmagic.util;
 import com.mojang.datafixers.DataFixer;
 import com.mojang.serialization.Dynamic;
 import io.hotwop.worldmagic.WorldMagic;
+import io.hotwop.worldmagic.WorldMagicBootstrap;
 import io.hotwop.worldmagic.version.MethodMapping;
 import io.hotwop.worldmagic.version.MethodVersionWrapper;
 import it.unimi.dsi.fastutil.longs.LongIterator;
 import it.unimi.dsi.fastutil.longs.LongList;
 import net.minecraft.SharedConstants;
+import net.minecraft.WorldVersion;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.core.*;
 import net.minecraft.resources.ResourceKey;
@@ -21,10 +23,7 @@ import net.minecraft.world.level.*;
 import net.minecraft.world.level.dimension.LevelStem;
 import net.minecraft.world.level.levelgen.WorldDimensions;
 import net.minecraft.world.level.saveddata.SavedData;
-import net.minecraft.world.level.storage.DimensionDataStorage;
-import net.minecraft.world.level.storage.LevelDataAndDimensions;
-import net.minecraft.world.level.storage.LevelStorageSource;
-import net.minecraft.world.level.storage.WorldData;
+import net.minecraft.world.level.storage.*;
 import org.bukkit.NamespacedKey;
 import org.jetbrains.annotations.Nullable;
 
@@ -38,7 +37,7 @@ import java.util.function.Supplier;
 public final class VersionUtil {
     private VersionUtil(){}
 
-    public static final int dataVersion=SharedConstants.getCurrentVersion().getDataVersion().getVersion();
+    public static final int dataVersion= WorldMagicBootstrap.getDataVersion();
 
     private static final MethodMapping<Registry<?>> registryAccessorMapping=new MethodVersionWrapper
         .Builder<Registry<?>>(RegistryAccess.class,"registryOrThrow",null,ResourceKey.class)

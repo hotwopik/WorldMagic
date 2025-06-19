@@ -24,19 +24,20 @@ repositories {
 }
 
 dependencies {
-    paperweight.paperDevBundle("1.21.5-R0.1-SNAPSHOT")
+    paperweight.paperDevBundle("1.21.6-R0.1-SNAPSHOT")
 
-    implementation project(":api")
-    implementation files("libs/extra-dfu7-4.3.0-SNAPSHOT.jar")
+    implementation(project(":api"))
 
-    implementation 'org.spongepowered:configurate-yaml:4.2.0'
-    compileOnly 'me.clip:placeholderapi:2.11.6'
-    compileOnly 'com.github.MilkBowl:VaultAPI:1.7.1'
+    implementation('org.spongepowered:configurate-yaml:4.2.0')
+    implementation("org.spongepowered:configurate-extra-dfu7:4.3.0-SNAPSHOT"){transitive=false}
+
+    compileOnly('me.clip:placeholderapi:2.11.6')
+    compileOnly('com.github.MilkBowl:VaultAPI:1.7.1')
 }
 
-["1.21","1.21.1","1.21.3","1.21.4","1.21.5"].each {vers->
+["1.21","1.21.1","1.21.3","1.21.4","1.21.5","1.21.6"].each {vers->
     tasks.register("runServer$vers"){
-        group("run paper")
+        group="run paper"
         dependsOn(runServer{
             runDirectory(file("run/$vers"))
             minecraftVersion(vers)
@@ -55,8 +56,9 @@ tasks {
         duplicatesStrategy=DuplicatesStrategy.EXCLUDE
         dependsOn(project(":api").getTasksByName("assemble",false))
 
-        from(zipTree(file('api/build/libs/api-'+version+'.jar')))
-        from(zipTree(file("libs/extra-dfu7-4.3.0-SNAPSHOT.jar")))
+        from{
+            zipTree(file('api/build/libs/api-'+version+'.jar'))
+        }
     }
     assemble{
         dependsOn(reobfJar)

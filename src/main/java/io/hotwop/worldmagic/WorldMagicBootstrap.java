@@ -22,15 +22,19 @@ import io.papermc.paper.plugin.lifecycle.event.LifecycleEventManager;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger;
 import net.minecraft.SharedConstants;
+import net.minecraft.WorldVersion;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.level.GameRules;
+import net.minecraft.world.level.storage.DataVersion;
 import org.bukkit.*;
 import org.bukkit.command.CommandSender;
 import org.bukkit.event.world.TimeSkipEvent;
 import org.jetbrains.annotations.NotNull;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.List;
 
 public final class WorldMagicBootstrap implements PluginBootstrap{
@@ -46,10 +50,45 @@ public final class WorldMagicBootstrap implements PluginBootstrap{
         return false;
     }
 
+    public static int getDataVersion(){
+        WorldVersion version=SharedConstants.getCurrentVersion();
+        Class<? extends WorldVersion> clazz=version.getClass();
+
+        Method dataVersionMethod;
+        try{
+            dataVersionMethod=clazz.getMethod("getDataVersion");
+        }catch(NoSuchMethodException e){
+            return version.dataVersion().version();
+        }
+
+        DataVersion dataVersion;
+        try{
+            dataVersion=(DataVersion)dataVersionMethod.invoke(version);
+        }catch(IllegalAccessException | InvocationTargetException e){
+            throw new RuntimeException(e);
+        }
+
+        Class<? extends DataVersion> dataClazz=dataVersion.getClass();
+
+        Method getVersionMethod;
+        try{
+            getVersionMethod=dataClazz.getMethod("getVersion");
+        }catch(NoSuchMethodException e){
+            throw new RuntimeException(e);
+        }
+
+        try{
+            return (int)getVersionMethod.invoke(dataVersion);
+        }catch(IllegalAccessException|InvocationTargetException e){
+            throw new RuntimeException(e);
+        }
+    }
+
     public void bootstrap(@NotNull BootstrapContext ctx) {
         logger=ctx.getLogger();
 
-        if(SharedConstants.getCurrentVersion().getDataVersion().getVersion()<3839){
+        logger.info("Booting WorldMagic...");
+        if(getDataVersion()<3839){
             throw new RuntimeException("Versions under 1.20.6 are unsupported");
         }
 
