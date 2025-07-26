@@ -24,7 +24,7 @@ repositories {
 }
 
 dependencies {
-    paperweight.paperDevBundle("1.21.7-R0.1-SNAPSHOT")
+    paperweight.paperDevBundle("1.21.8-R0.1-SNAPSHOT")
 
     implementation(project(":api"))
 
@@ -35,7 +35,7 @@ dependencies {
     compileOnly('com.github.MilkBowl:VaultAPI:1.7.1')
 }
 
-["1.21","1.21.1","1.21.3","1.21.4","1.21.5","1.21.6","1.21.7"].each {vers->
+["1.21","1.21.1","1.21.3","1.21.4","1.21.5","1.21.6","1.21.7","1.21.8"].each {vers->
     tasks.register("runServer$vers"){
         group="run paper"
         dependsOn(runServer{
