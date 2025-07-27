@@ -8,17 +8,18 @@ import io.hotwop.worldmagic.version.MethodMapping;
 import io.hotwop.worldmagic.version.MethodVersionWrapper;
 import it.unimi.dsi.fastutil.longs.LongIterator;
 import it.unimi.dsi.fastutil.longs.LongList;
-import net.minecraft.SharedConstants;
-import net.minecraft.WorldVersion;
 import net.minecraft.commands.CommandBuildContext;
+import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.*;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.Main;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.WorldLoader;
 import net.minecraft.server.dedicated.DedicatedServerProperties;
 import net.minecraft.server.level.ServerChunkCache;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.Difficulty;
 import net.minecraft.world.level.*;
 import net.minecraft.world.level.dimension.LevelStem;
 import net.minecraft.world.level.levelgen.WorldDimensions;
@@ -78,6 +79,12 @@ public final class VersionUtil {
         .Builder<Void>(Main.class,"forceUpgrade",null,LevelStorageSource.LevelStorageAccess.class,WorldData.class,DataFixer.class,boolean.class,BooleanSupplier.class,RegistryAccess.class,boolean.class)
         .allParameterMapping(3839,old->new Object[]{old[0],old[2],old[3],old[4],old[5],old[6]},LevelStorageSource.LevelStorageAccess.class,DataFixer.class,boolean.class,BooleanSupplier.class,RegistryAccess.class,boolean.class)
         .allParameterMapping(4325,old->old,LevelStorageSource.LevelStorageAccess.class,WorldData.class,DataFixer.class,boolean.class,BooleanSupplier.class,RegistryAccess.class,boolean.class)
+        .build().createMapping(dataVersion);
+
+    public static final MethodMapping<Void> setDifficulty=new MethodVersionWrapper
+        .Builder<Void>(MinecraftServer.class,"setDifficulty",null, ServerLevel.class, Difficulty.class, CommandSourceStack.class, boolean.class)
+        .allParameterMapping(3839,old->new Object[]{old[0],old[1],old[3]}, ServerLevel.class, Difficulty.class, boolean.class)
+        .allParameterMapping(4440,old->old, ServerLevel.class, Difficulty.class, CommandSourceStack.class, boolean.class)
         .build().createMapping(dataVersion);
 
     private static final Method getHolderOwner;

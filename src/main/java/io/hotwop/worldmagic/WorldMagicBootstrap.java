@@ -192,7 +192,7 @@ public final class WorldMagicBootstrap implements PluginBootstrap{
                             CustomWorld world=ctx.getArgument("world", CustomWorld.class);
                             if(!world.loaded())throw worldNotLoaded.create(world.id.asString());
 
-                            WorldMagic.vanillaServer().setDifficulty(world.level(),diff,true);
+                            VersionUtil.setDifficulty.invokeWithExecutor(WorldMagic.vanillaServer(),world.level(),diff,ctx.getSource(),true);
                             ctx.getSource().getSender().sendMessage(PaperAdventure.asAdventure(Component.translatable("commands.difficulty.success",diff.getDisplayName())));
                             return diff.getId()+1;
                         },
