@@ -21,3 +21,16 @@ Supports paper versions **1.20.6** and above.
 
 ## Wiki
 More information about plugin can be founded on the [wiki](https://github.com/hotwopik/WorldMagic/wiki)
+
+## Api usage
+For gradle:
+```groovy
+repository{
+  maven{
+    url="https://maven.pkg.github.com/hotwopik/WorldMagic"
+  }
+}
+dependencies{
+  compileOnly("io.hotwop.worldmagic:worldmagic-api:<last api version>")
+}
+```
